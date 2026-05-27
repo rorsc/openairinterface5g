@@ -27,8 +27,16 @@ nr_rlc_ue_manager_t *new_nr_rlc_ue_manager(nr_rlc_op_mode_t mode)
     exit(1);
   }
 
-  if (pthread_mutex_init(&ret->lock, NULL)) abort();
+  pthread_mutexattr_t attr;
+  int rc;
+  rc = pthread_mutexattr_init(&attr);
+  DevAssert(rc == 0);
+  rc = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
+  DevAssert(rc == 0);
+  if (pthread_mutex_init(&ret->lock, &attr)) abort();
   ret->mode = mode;
+  rc = pthread_mutexattr_destroy(&attr);
+  DevAssert(rc == 0);
 
   return ret;
 }
