@@ -1749,6 +1749,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg, nr_cell_sched_t **out_cel
         dl_bler_options->harq_round_max = 1;
       else
         dl_bler_options->harq_round_max = *gpd(params, np, MACRLC_DL_HARQ_ROUND_MAX)->u8ptr;
+      dl_bler_options->target_bler = 0.10f;
+      dl_bler_options->step_size = 1.0f;
       NR_bler_options_t *ul_bler_options = &cell->ul_bler;
       ul_bler_options->upper = *gpd(params, np, MACRLC_UL_BLER_TARGET_UPPER)->dblptr;
       ul_bler_options->lower = *gpd(params, np, MACRLC_UL_BLER_TARGET_LOWER)->dblptr;
@@ -1758,6 +1760,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg, nr_cell_sched_t **out_cel
         ul_bler_options->harq_round_max = 1;
       else
         ul_bler_options->harq_round_max = *gpd(params, np, MACRLC_UL_HARQ_ROUND_MAX)->u8ptr;
+      ul_bler_options->target_bler = 0.10f;
+      ul_bler_options->step_size = 1.0f;
       cell->min_grant_prb = *gpd(params, np, MACRLC_MIN_GRANT_PRB)->u16ptr;
       long sc_fdma = NR_PUSCH_Config__transformPrecoder_enabled;
       NR_BWP_UplinkCommon_t *bwp = cell->common_channels.ServingCellConfigCommon->uplinkConfigCommon->initialUplinkBWP;
