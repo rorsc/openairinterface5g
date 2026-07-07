@@ -1741,26 +1741,22 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg, nr_cell_sched_t **out_cel
       nrmac->stats_max_ue = *gpd(params, np, MACRLC_STATS_MAX_UE)->iptr;
       nrmac->print_ue_stats = nrmac->stats_max_ue > 0;
       NR_bler_options_t *dl_bler_options = &cell->dl_bler;
-      dl_bler_options->upper = *gpd(params, np, MACRLC_DL_BLER_TARGET_UPPER)->dblptr;
-      dl_bler_options->lower = *gpd(params, np, MACRLC_DL_BLER_TARGET_LOWER)->dblptr;
       dl_bler_options->min_mcs = *gpd(params, np, MACRLC_DL_MIN_MCS)->u8ptr;
       dl_bler_options->max_mcs = *gpd(params, np, MACRLC_DL_MAX_MCS)->u8ptr;
       if (config.disable_harq)
         dl_bler_options->harq_round_max = 1;
       else
         dl_bler_options->harq_round_max = *gpd(params, np, MACRLC_DL_HARQ_ROUND_MAX)->u8ptr;
-      dl_bler_options->target_bler = 0.10f;
+      dl_bler_options->target_bler = *gpd(params, np, MACRLC_DL_BLER_TARGET)->dblptr;
       dl_bler_options->step_size = 1.0f;
       NR_bler_options_t *ul_bler_options = &cell->ul_bler;
-      ul_bler_options->upper = *gpd(params, np, MACRLC_UL_BLER_TARGET_UPPER)->dblptr;
-      ul_bler_options->lower = *gpd(params, np, MACRLC_UL_BLER_TARGET_LOWER)->dblptr;
       ul_bler_options->min_mcs = *gpd(params, np, MACRLC_UL_MIN_MCS)->u8ptr;
       ul_bler_options->max_mcs = *gpd(params, np, MACRLC_UL_MAX_MCS)->u8ptr;
       if (config.disable_harq)
         ul_bler_options->harq_round_max = 1;
       else
         ul_bler_options->harq_round_max = *gpd(params, np, MACRLC_UL_HARQ_ROUND_MAX)->u8ptr;
-      ul_bler_options->target_bler = 0.10f;
+      ul_bler_options->target_bler = *gpd(params, np, MACRLC_UL_BLER_TARGET)->dblptr;
       ul_bler_options->step_size = 1.0f;
       cell->min_grant_prb = *gpd(params, np, MACRLC_MIN_GRANT_PRB)->u16ptr;
       long sc_fdma = NR_PUSCH_Config__transformPrecoder_enabled;
