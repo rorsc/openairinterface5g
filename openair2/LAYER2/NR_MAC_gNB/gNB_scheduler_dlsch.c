@@ -1203,7 +1203,9 @@ static void fill_dl_tx_request(post_process_pdsch_t *pdsch,
   tx_req->num_TLV = 1;
   tx_req->TLVs[0].length = TBS;
   tx_req->PDU_length = compute_PDU_length(tx_req->num_TLV, tx_req->TLVs[0].length);
-  memcpy(tx_req->TLVs[0].value.direct, buf, TBS);
+  tx_req->TLVs[0].tag = 1; // means ptr carries for payload
+  DevAssert((uintptr_t) buf % 4 == 0); // check alignment: FAPI uses u32
+  tx_req->TLVs[0].value.ptr = (uint32_t *)buf;
   pdsch->TX_req->Number_of_PDUs++;
   pdsch->TX_req->SFN = frame;
   pdsch->TX_req->Slot = slot;
