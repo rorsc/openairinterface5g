@@ -297,16 +297,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
       RC.nrmac[i]->ul_next = (fsn_t) {.mu = *scc->ssbSubcarrierSpacing};
       RC.nrmac[i]->print_ue_stats = true;
 
-      pthread_mutexattr_t attr;
-      int ret;
-      ret = pthread_mutexattr_init(&attr);
-      DevAssert(ret == 0);
-      ret = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
-      DevAssert(ret == 0);
-      ret = pthread_mutex_init(&RC.nrmac[i]->sched_lock, &attr);
-      DevAssert(ret == 0);
-      ret = pthread_mutexattr_destroy(&attr);
-      DevAssert(ret == 0);
+      pthread_mutex_init(&RC.nrmac[i]->sched_lock, NULL);
 
       uid_linear_allocator_init(&RC.nrmac[i]->UE_info.uid_allocator);
 
