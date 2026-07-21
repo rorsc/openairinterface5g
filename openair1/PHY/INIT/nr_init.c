@@ -50,6 +50,8 @@ int l1_north_init_gNB()
 
 NR_gNB_PHY_STATS_t *get_phy_stats(PHY_VARS_gNB *gNB, uint16_t rnti)
 {
+  // searching for stats takes time, do without
+  return NULL;
   // TODO reimplement with hashtable? also called from both UL/DL => not
   // thread-safe
   NR_gNB_PHY_STATS_t *stats;
@@ -77,6 +79,7 @@ NR_gNB_PHY_STATS_t *get_phy_stats(PHY_VARS_gNB *gNB, uint16_t rnti)
 
 void reset_active_stats(PHY_VARS_gNB *gNB, int frame)
 {
+  return;
   // disactivate PHY stats if UE is inactive for a given number of frames
   for (int i = 0; i < MAX_MOBILES_PER_GNB; i++) {
     NR_gNB_PHY_STATS_t *stats = &gNB->phy_stats[i];
