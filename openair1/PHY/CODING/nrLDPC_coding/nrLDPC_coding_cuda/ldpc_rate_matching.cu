@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include "PHY/gpu_compat.h"
 #include "openair1/PHY/CODING/nrLDPC_coding/nrLDPC_coding_segment/nr_rate_matching.h"
 
 __device__ __forceinline__ int clamp_i16_to_i8(int x)
@@ -325,7 +326,7 @@ extern "C" int nr_rate_matching_ldpc_rx_cuda(uint32_t Tbslbrm,
                                              uint32_t r_firstE2,
                                              uint32_t F,
                                              uint32_t Foffset,
-                                             cudaStream_t *s,
+                                             gpuStream_t *s,
                                              int8_t sidx)
 {
   if (C == 0 || C > 132) {
@@ -394,13 +395,13 @@ extern "C" int nr_rate_matching_ldpc_rx_cuda(uint32_t Tbslbrm,
                                             (uint32_t *)soft_input,
                                             (uint16_t *)llr_buffer);
   }
-  cudaError_t err = cudaPeekAtLastError();
+  gpuError_t err = gpuPeekAtLastError();
 
-  if (err != cudaSuccess) {
+  if (err != gpuSuccess) {
     printf(
         "cuda error (nr_rate_matching_ldpc_rx_cuda): %s  Ncb %d, ind %d, rvidx %d, E1 %d, E2 %d, Foffset %d, F %d, K %d, Z %d, "
         "clear %d\n",
-        cudaGetErrorString(err),
+        gpuGetErrorString(err),
         Ncb,
         ind,
         rvidx,

@@ -8,12 +8,9 @@
 
 #pragma once
 
-#include <cuda_runtime.h>
+#include "PHY/gpu_compat.h"
 #include <stdint.h>
 #include <stdio.h>
-
-#include <cuda_runtime.h>
-#include <stdint.h>
 
 __device__ __forceinline__ void moveBricks_invput_circ(int8_t *__restrict__ dstBuf,
                                                        uint32_t dstBuf_Offset,

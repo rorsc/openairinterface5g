@@ -6,7 +6,7 @@
  * \brief Defines the kernels for bit node processing
  */
 
-#include <cuda_runtime.h>
+#include "PHY/gpu_compat.h"
 #include <stdint.h>
 #include <stdio.h>
 #include "openair1/PHY/CODING/nrLDPC_decoder/nrLDPCdecoder_defs.h"

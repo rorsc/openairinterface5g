@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <cuda_runtime.h>
+#include "PHY/gpu_compat.h"
 #include <stdint.h>
 #include <stdio.h>
 #include "nrLDPC_CUDA_public.h"
