@@ -169,7 +169,7 @@ __device__ void llr2bitPacked_Kernel_BG1_int8(uint32_t R,
 
   // Thread Cooperation: Pair threads to pack 8 bits (1 byte)
   // Even thread (0,2..) takes low nibble, Odd thread (1,3..) takes high nibble.
-  uint32_t neighbor_bits = __shfl_xor_sync(0xffffffff, my_4_bits, 1);
+  uint32_t neighbor_bits = __shfl_xor_sync(GPU_SHFL_ALL_LANES, my_4_bits, 1);
 
   if ((lane & 1) == 0) {
     // Combine: [Odd Thread Bits (High)] | [My Bits (Low)]

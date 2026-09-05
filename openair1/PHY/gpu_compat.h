@@ -5,11 +5,49 @@
 #pragma once
 
 /*
-  gpu_compat.h  --  C-compatible gpu* names for the CUDA runtime API
+  gpu_compat.h  --  C-compatible CUDA/HIP runtime abstraction
+
+  Compile with:
+    NVCC  -> CUDA
+    HIPCC -> HIP
+
+  No C++ features used.
 */
 
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
+#if defined(__HIPCC__) || defined(__HIP_PLATFORM_AMD__) || defined(__HIP_PLATFORM_HCC__)
+  #define GPU_USE_HIP 1
+#else //if defined(__CUDACC__)
+  #define GPU_USE_CUDA 1
+//#else
+//  #error "Compile with NVCC or HIPCC."
+#endif
+
+
+/* ================= Backend Includes ================= */
+
+#if defined(GPU_USE_HIP)
+  #include <hip/hip_runtime.h>
+  #include <hip/hip_runtime_api.h>
+#elif defined(GPU_USE_CUDA)
+  #include <cuda_runtime.h>
+  #include <cuda_runtime_api.h>
+#endif
+
+
+/* ================= Type Abstraction ================= */
+
+#if defined(GPU_USE_HIP)
+
+typedef hipError_t    gpuError_t;
+typedef hipStream_t   gpuStream_t;
+typedef hipEvent_t    gpuEvent_t;
+
+#define gpuSuccess hipSuccess
+
+#define gpuMemcpyHostToDevice   hipMemcpyHostToDevice
+#define gpuMemcpyDeviceToHost   hipMemcpyDeviceToHost
+
+#elif defined(GPU_USE_CUDA)
 
 typedef cudaError_t    gpuError_t;
 typedef cudaStream_t   gpuStream_t;
@@ -20,19 +58,77 @@ typedef cudaEvent_t    gpuEvent_t;
 #define gpuMemcpyHostToDevice   cudaMemcpyHostToDevice
 #define gpuMemcpyDeviceToHost   cudaMemcpyDeviceToHost
 
-#define gpuGetErrorName     cudaGetErrorName
-#define gpuGetErrorString   cudaGetErrorString
-#define gpuPeekAtLastError  cudaPeekAtLastError
+#endif
 
-#define gpuHostAlloc           cudaHostAlloc
-#define gpuHostAllocMapped     cudaHostAllocMapped
-#define gpuHostAllocDefault    cudaHostAllocDefault
-#define gpuHostAllocPortable   cudaHostAllocPortable
-#define gpuFreeHost            cudaFreeHost
-#define gpuHostGetDevicePointer cudaHostGetDevicePointer
 
-#define gpuMemcpy              cudaMemcpy
-#define gpuMemcpyAsync         cudaMemcpyAsync
+/* ================= Error Handling ================= */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#if defined(GPU_USE_HIP)
+  #define gpuGetErrorName     hipGetErrorName
+  #define gpuGetErrorString   hipGetErrorString
+  #define gpuGetLastError     hipGetLastError
+  #define gpuDeviceSynchronize hipDeviceSynchronize
+  #define gpuPeekAtLastError  hipPeekAtLastError
+#elif defined(GPU_USE_CUDA)
+  #define gpuGetErrorName     cudaGetErrorName
+  #define gpuGetErrorString   cudaGetErrorString
+  #define gpuGetLastError     cudaGetLastError
+  #define gpuDeviceSynchronize cudaDeviceSynchronize
+  #define gpuPeekAtLastError  cudaPeekAtLastError
+#endif
+
+/* ================= Runtime API Mapping ================= */
+
+#if defined(GPU_USE_HIP)
+
+#define gpuGetDeviceProperties hipGetDeviceProperties
+
+#define gpuMalloc              hipMalloc
+#define gpuFree                hipFree
+#define gpuMemset              hipMemset
+#define gpuMemsetAsync         hipMemsetAsync
+#define gpuHostAlloc           hipHostAlloc
+#define gpuHostAllocMapped     hipHostAllocMapped
+#define gpuHostAllocDefault    hipHostAllocDefault
+#define gpuHostAllocPortable   hipHostAllocPortable
+#define gpuFreeHost            hipFreeHost
+#define gpuHostGetDevicePointer hipHostGetDevicePointer
+
+#define gpuMemcpy              hipMemcpy
+#define gpuMemcpyAsync         hipMemcpyAsync
+
+#define gpuDeviceProp_t        hipDeviceProp_t
+#define gpuDeviceGetAttribute  hipDeviceGetAttribute
+#define gpuDevAttrManagedMemory hipDeviceAttributeManagedMemory
+#define gpuDevAttrConcurrentManagedAccess hipDeviceAttributeConcurrentManagedAccess
+#define gpuDevAttrUnifiedAddressing hipDeviceAttributeUnifiedAddressing
+#define gpuDevAttrPageableMemoryAccess hipDeviceAttributePageableMemoryAccess
+#define gpuDevAttrPageableMemoryAccessUsesHostPageTables hipDeviceAttributePageableMemoryAccessUsesHostPageTables
+#define gpuDevAttrHostRegisterSupported hipDeviceAttributeHostRegisterSupported
+#define gpuDevAttrIntegrated hipDeviceAttributeIntegrated
+
+
+#define gpuStreamDestroy       hipStreamDestroy
+#define gpuStreamSynchronize   hipStreamSynchronize
+#define gpuStreamNonBlocking   hipStreamNonBlocking
+#define gpuStreamCreateWithFlags        hipStreamCreateWithFlags
+#define gpuStreamBeginCapture  hipStreamBeginCapture
+#define gpuStreamEndCapture    hipStreamEndCapture
+#define gpuStreamCaptureModeThreadLocal hipStreamCaptureModeThreadLocal
+
+#define gpuEventRecord         hipEventRecord
+
+#define gpuGraph_t             hipGraph_t
+#define gpuGraphExec_t         hipGraphExec_t
+#define gpuGraphInstantiate    hipGraphInstantiate
+#define gpuGraphLaunch         hipGraphLaunch
+#define gpuGraphDestroy        hipGraphDestroy
+#define gpuGraphExecDestroy    hipGraphExecDestroy
+
+#elif defined(GPU_USE_CUDA)
 
 #define gpuGetDeviceProperties cudaGetDeviceProperties
 
@@ -50,18 +146,23 @@ typedef cudaEvent_t    gpuEvent_t;
 #define gpuFree                cudaFree
 #define gpuMemset              cudaMemset
 #define gpuMemsetAsync         cudaMemsetAsync
+#define gpuHostAlloc           cudaHostAlloc
+#define gpuHostAllocMapped     cudaHostAllocMapped
+#define gpuHostAllocDefault    cudaHostAllocDefault
+#define gpuHostAllocPortable   cudaHostAllocPortable
+#define gpuFreeHost            cudaFreeHost
+#define gpuHostGetDevicePointer cudaHostGetDevicePointer
 
-#define gpuGetLastError     cudaGetLastError
-#define gpuDeviceSynchronize cudaDeviceSynchronize
-
-#define gpuStreamBeginCapture  cudaStreamBeginCapture
-#define gpuStreamCaptureModeThreadLocal cudaStreamCaptureModeThreadLocal
+#define gpuMemcpy              cudaMemcpy
+#define gpuMemcpyAsync         cudaMemcpyAsync
 
 #define gpuStreamCreateWithFlags        cudaStreamCreateWithFlags
 #define gpuStreamDestroy       cudaStreamDestroy
 #define gpuStreamSynchronize   cudaStreamSynchronize
 #define gpuStreamNonBlocking   cudaStreamNonBlocking
+#define gpuStreamBeginCapture  cudaStreamBeginCapture
 #define gpuStreamEndCapture    cudaStreamEndCapture
+#define gpuStreamCaptureModeThreadLocal cudaStreamCaptureModeThreadLocal
 
 #define gpuEventRecord         cudaEventRecord
 
@@ -71,3 +172,4 @@ typedef cudaEvent_t    gpuEvent_t;
 #define gpuGraphLaunch         cudaGraphLaunch
 #define gpuGraphDestroy        cudaGraphDestroy
 #define gpuGraphExecDestroy    cudaGraphExecDestroy
+#endif
