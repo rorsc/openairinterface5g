@@ -9,6 +9,7 @@
 #pragma once
 
 #include "PHY/gpu_compat.h"
+#include "PHY/gpu_simd_intrin_compat.h"
 #include <stdint.h>
 #include <stdio.h>
 #include "nrLDPC_CUDA_public.h"
