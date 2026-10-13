@@ -53,6 +53,7 @@ typedef struct {
   uint8_t ik[16]; 
   uint8_t milenage_res[8];
   uint8_t home_network_public_key[32];
+  char *ifname;
 } uicc_t;
 
 /*

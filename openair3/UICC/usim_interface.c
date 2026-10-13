@@ -34,6 +34,7 @@ extern uint16_t NB_UE_INST;
       {"protection_scheme", "SUCI Profile Scheme\n",                 0, .iptr = &uicc->protection_scheme,          .defintval=0,                                  TYPE_INT,    0}, \
       {"home_network_public_key_id", "Home Network Public Key ID\n", 0, .iptr=&uicc->home_network_public_key_id,   .defintval=1,                                  TYPE_INT,    0}, \
       {"home_network_public_key",    "Home Network Public Key\n",    0, .strptr=&uicc->home_network_public_keyStr, .defstrval=DEFAULT_HOME_NETWORK_PUBLIC_KEY,    TYPE_STRING, 0}, \
+      {"ifname",    "interface name\n",    0, .strptr=&uicc->ifname, .defstrval="oaitun_ue1",    TYPE_STRING, 0}, \
   };
 
 static uicc_t** uiccArray=NULL;

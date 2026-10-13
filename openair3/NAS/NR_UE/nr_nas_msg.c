@@ -1697,6 +1697,8 @@ static void process_pdu_session_addr(pdu_session_establishment_accept_msg_t *msg
     case PDU_SESSION_TYPE_IPV4: {
       char ip[20];
       capture_ipv4_addr(&addr[0], ip, sizeof(ip));
+      const char *new = nas->uicc->ifname;
+      memcpy(t->ifname, new, strlen(new));
       nr_ue_tun_create_ip_if(t, ip, NULL, nas->UE_id, ifname_pdu_id);
     } break;
 
