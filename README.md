@@ -229,7 +229,7 @@ Per-UE iperf and MAC goodput numbers are in `scripts-oai/results/summary.md`.
 
 ## 4. AI tools used
 
-- Claude Code (Anthropic) helped with:
+- Claude Code Opus 5.5 (Anthropic) helped with:
   - code navigation,
   - debugging the multi-UE and firewall setup,
   - the test and measurement scripts,
