@@ -12,6 +12,9 @@ for i in 1 2 3; do
   b=$([ $i = 1 ] && echo 15M || echo 150M)
   docker exec -d oai-ext-dn iperf3 -c $ip -u -b $b -t $DUR
 done
+
+./goodput.sh $T $((DUR - 5)) &
+
 sleep $((DUR + 5))
 
 rate() { grep receiver /tmp/max_${T}_ue$1.log | tail -1 | grep -oP '[\d.]+(?= Mbits/sec)'; }
