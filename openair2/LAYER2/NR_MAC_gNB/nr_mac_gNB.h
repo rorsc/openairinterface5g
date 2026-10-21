@@ -24,17 +24,12 @@
 #include "openair2/LAYER2/nr_rlc/nr_rlc_configuration.h"
 #include "openair2/LAYER2/NR_MAC_gNB/nr_pos_ue_context.h"
 
-#define NR_SCHED_LOCK(lock)                                        \
-  do {                                                             \
-    int rc = pthread_mutex_lock(lock);                             \
-    AssertFatal(rc == 0, "error while locking scheduler mutex, pthread_mutex_lock() returned %d\n", rc); \
-  } while (0)
-
-#define NR_SCHED_UNLOCK(lock)                                      \
-  do {                                                             \
-    int rc = pthread_mutex_unlock(lock);                           \
-    AssertFatal(rc == 0, "error while locking scheduler mutex, pthread_mutex_unlock() returned %d\n", rc); \
-  } while (0)
+/* sched_lock with contention instrumentation: waits above a threshold are logged with the waiter's
+ * and the current holder's call site, see nr_sched_lock_instr() */
+void nr_sched_lock_instr(pthread_mutex_t *lock, const char *func, int line);
+void nr_sched_unlock_instr(pthread_mutex_t *lock);
+#define NR_SCHED_LOCK(lock) nr_sched_lock_instr(lock, __func__, __LINE__)
+#define NR_SCHED_UNLOCK(lock) nr_sched_unlock_instr(lock)
 
 /* Commmon */
 #include "COMMON/f1ap_messages_types.h"

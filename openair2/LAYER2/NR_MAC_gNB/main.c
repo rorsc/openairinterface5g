@@ -6,11 +6,13 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <sched.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
 #include <unistd.h>
 #include "NR_DRB-ToAddMod.h"
 #include "NR_DRB-ToAddModList.h"
@@ -42,6 +44,57 @@
 #ifdef E3_AGENT
 #include "openair2/E3AP/ran_func_spectrum_extern.h"
 #endif /* E3_AGENT */
+
+/* log sched_lock waits at or above this duration */
+#define NR_SCHED_LOCK_WAIT_WARN_US 50
+
+/* current sched_lock holder. Fields are updated individually, so a waiter may
+ * see a mix of two consecutive holders: good enough for instrumentation */
+static struct {
+  _Atomic(const char *) func;
+  _Atomic int line;
+  _Atomic uint64_t since_ns;
+} sched_lock_holder;
+
+static uint64_t sched_lock_now_ns(void)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+
+void nr_sched_lock_instr(pthread_mutex_t *lock, const char *func, int line)
+{
+  int rc = pthread_mutex_trylock(lock);
+  if (rc == EBUSY) {
+    const char *h_func = atomic_load(&sched_lock_holder.func);
+    int h_line = atomic_load(&sched_lock_holder.line);
+    uint64_t h_since = atomic_load(&sched_lock_holder.since_ns);
+    uint64_t t0 = sched_lock_now_ns();
+    rc = pthread_mutex_lock(lock);
+    uint64_t wait_us = (sched_lock_now_ns() - t0) / 1000;
+    if (rc == 0 && wait_us >= NR_SCHED_LOCK_WAIT_WARN_US)
+      LOG_W(NR_MAC,
+            "sched_lock: %s:%d waited %" PRIu64 " us for holder %s:%d (holding for %" PRIu64 " us when wait started)\n",
+            func,
+            line,
+            wait_us,
+            h_func ? h_func : "?",
+            h_line,
+            h_func ? (t0 - h_since) / 1000 : 0);
+  }
+  AssertFatal(rc == 0, "error while locking scheduler mutex, pthread_mutex_lock() returned %d\n", rc);
+  atomic_store(&sched_lock_holder.func, func);
+  atomic_store(&sched_lock_holder.line, line);
+  atomic_store(&sched_lock_holder.since_ns, sched_lock_now_ns());
+}
+
+void nr_sched_unlock_instr(pthread_mutex_t *lock)
+{
+  atomic_store(&sched_lock_holder.func, NULL);
+  int rc = pthread_mutex_unlock(lock);
+  AssertFatal(rc == 0, "error while unlocking scheduler mutex, pthread_mutex_unlock() returned %d\n", rc);
+}
 
 #define MACSTATSSTRLEN 36256
 
