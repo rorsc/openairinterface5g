@@ -73,4 +73,4 @@ COPY oaienv .
 RUN /bin/sh oaienv && \ 
     cd cmake_targets && \
     mkdir -p log && \
-    ./build_oai -I -w USRP -w BLADERF --install-optional-packages
+    ./build_oai -I
