@@ -1012,12 +1012,11 @@ static void _nr_rx_sdu_rx(gNB_MAC_INST *gNB_mac,
   handle_nr_ul_harq(cell, UE, UE->rnti, rx->harq_id, rx->pdu == NULL);
 }
 
-void nr_rx_sdu(const module_id_t gnb_mod_idP,
-               const int CC_idP,
-               const frame_t frameP,
-               const slot_t slotP,
-               const nfapi_nr_crc_t *crc,
-               const nfapi_nr_rx_data_pdu_t *rx)
+void nr_rx_sdu_crc(const module_id_t gnb_mod_idP,
+                   const int CC_idP,
+                   const frame_t frameP,
+                   const slot_t slotP,
+                   const nfapi_nr_crc_t *crc)
 {
   gNB_MAC_INST *gNB_mac = RC.nrmac[gnb_mod_idP];
   NR_SCHED_LOCK(&gNB_mac->sched_lock);
@@ -1027,10 +1026,28 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
   if (UE) {
     DevAssert(UE->rnti == crc->rnti);
     _nr_rx_sdu_crc(gNB_mac, cell, frameP, slotP, UE, crc);
+  } else {
+    nr_rx_ra_sdu_crc(gNB_mac, crc);
+  }
+  stop_meas(&cell->rx_ulsch_sdu);
+  NR_SCHED_UNLOCK(&gNB_mac->sched_lock);
+}
+
+void nr_rx_sdu_rx(const module_id_t gnb_mod_idP,
+                  const int CC_idP,
+                  const frame_t frameP,
+                  const slot_t slotP,
+                  const nfapi_nr_rx_data_pdu_t *rx)
+{
+  gNB_MAC_INST *gNB_mac = RC.nrmac[gnb_mod_idP];
+  NR_SCHED_LOCK(&gNB_mac->sched_lock);
+  nr_cell_sched_t *cell = nr_mac_get_cell_by_phy_id(gNB_mac, CC_idP);
+  start_meas(&cell->rx_ulsch_sdu);
+  NR_UE_info_t *UE = find_nr_UE(&gNB_mac->UE_info, rx->rnti);
+  if (UE) {
     DevAssert(UE->rnti == rx->rnti);
     _nr_rx_sdu_rx(gNB_mac, cell, frameP, slotP, UE, rx);
   } else {
-    nr_rx_ra_sdu_crc(gNB_mac, crc);
     nr_rx_ra_sdu_rx(gNB_mac, cell, frameP, slotP, rx);
   }
   stop_meas(&cell->rx_ulsch_sdu);
