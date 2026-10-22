@@ -993,7 +993,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, frame_t frame, slot_t slot, c
 
   // TODO: handle SR
   if (uci_234->pduBitmap & 0x1) {
-    free(uci_234->sr.sr_payload);
+    // payload freed by the indication owner
   }
 
   if ((uci_234->pduBitmap >> 1) & 0x01) {
@@ -1011,7 +1011,6 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, frame_t frame, slot_t slot, c
       LOG_D(NR_MAC,"%4d.%2d bit %d pid %d ack/nack %d\n",frame, slot, harq_bit, pid, acknack);
       handle_dl_harq(nrmac, UE, pid, uci_234->harq.harq_crc != 1 && acknack, nrmac->dl_bler.harq_round_max);
     }
-    free(uci_234->harq.harq_payload);
   }
   if ((uci_234->pduBitmap >> 2) & 0x01) {
     LOG_D(NR_MAC, "CSI CRC %d\n", uci_234->csi_part1.csi_part1_crc);
@@ -1022,11 +1021,9 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id, frame_t frame, slot_t slot, c
         extract_pucch_csi_report(csi_MeasConfig, uci_234, frame, slot, UE, nrmac);
       }
     }
-    free(uci_234->csi_part1.csi_part1_payload);
   }
   if ((uci_234->pduBitmap >> 3) & 0x01) {
     //@TODO:Handle CSI Report 2
-    // nothing to free (yet)
   }
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
