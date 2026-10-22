@@ -737,35 +737,51 @@ static void handle_msg3_failed_rx(gNB_MAC_INST *mac, NR_RA_t *ra, rnti_t rnti, i
   ra->ra_state = nrRA_Msg3_retransmission;
 }
 
-static void nr_rx_ra_sdu(gNB_MAC_INST *mac,
-                         nr_cell_sched_t *cell,
-                         const frame_t frame,
-                         const sub_frame_t slot,
-                         const nfapi_nr_crc_t *crc,
-                         const nfapi_nr_rx_data_pdu_t *rx)
+static NR_UE_info_t *get_ra_UE_waiting_pusch(gNB_MAC_INST *mac, rnti_t rnti)
 {
-  NR_ServingCellConfigCommon_t *scc = cell->common_channels.ServingCellConfigCommon;
-  NR_UE_info_t *UE = find_ra_UE(&mac->UE_info, crc->rnti);
+  NR_UE_info_t *UE = find_ra_UE(&mac->UE_info, rnti);
   if (!UE) {
-    LOG_E(NR_MAC, "UL SDU discarded. Couldn't finde UE with RNTI %04x \n", crc->rnti);
-    return;
+    LOG_E(NR_MAC, "UL SDU discarded. Couldn't finde UE with RNTI %04x \n", rnti);
+    return NULL;
   }
 
   NR_RA_t *ra = UE->ra;
   if (ra->ra_type == RA_4_STEP && ra->ra_state != nrRA_WAIT_Msg3) {
     LOG_W(NR_MAC, "UL SDU discarded for RNTI %04x RA state not waiting for PUSCH\n", UE->rnti);
-    return;
+    return NULL;
   }
+  return UE;
+}
+
+static void nr_rx_ra_sdu_crc(gNB_MAC_INST *mac, const nfapi_nr_crc_t *crc)
+{
+  NR_UE_info_t *UE = get_ra_UE_waiting_pusch(mac, crc->rnti);
+  if (!UE)
+    return;
 
   if (crc->ul_cqi != 0xff) {
     // Msg3: reset average with first measurement. If this fails (e.g., ul_cqi == 0xff)
     // everything starts from predetermined value
     nr_mac_pc_reset_snr(&UE->UE_sched_ctrl.pusch_pc, crc->ul_cqi * 5 - 640, crc->rssi);
-    ra->msg3_TPC = nr_mac_get_tpc(&UE->UE_sched_ctrl.pusch_pc);
+    UE->ra->msg3_TPC = nr_mac_get_tpc(&UE->UE_sched_ctrl.pusch_pc);
   }
   DevAssert(crc->harq_id >= 0 && crc->harq_id < 8);
   if (crc->timing_advance != 0xffff)
     UE->UE_sched_ctrl.ta_update = crc->timing_advance;
+}
+
+static void nr_rx_ra_sdu_rx(gNB_MAC_INST *mac,
+                            nr_cell_sched_t *cell,
+                            const frame_t frame,
+                            const sub_frame_t slot,
+                            const nfapi_nr_rx_data_pdu_t *rx)
+{
+  NR_UE_info_t *UE = get_ra_UE_waiting_pusch(mac, rx->rnti);
+  if (!UE)
+    return;
+
+  NR_ServingCellConfigCommon_t *scc = cell->common_channels.ServingCellConfigCommon;
+  NR_RA_t *ra = UE->ra;
 
   // CFRA: we scheduled Msg3 (which does not exist in CFRA, see also
   // nr_generate_Msg2()). We did not mark RA as complete right away, as the
@@ -1014,7 +1030,8 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
     DevAssert(UE->rnti == rx->rnti);
     _nr_rx_sdu_rx(gNB_mac, cell, frameP, slotP, UE, rx);
   } else {
-    nr_rx_ra_sdu(gNB_mac, cell, frameP, slotP, crc, rx);
+    nr_rx_ra_sdu_crc(gNB_mac, crc);
+    nr_rx_ra_sdu_rx(gNB_mac, cell, frameP, slotP, rx);
   }
   stop_meas(&cell->rx_ulsch_sdu);
   NR_SCHED_UNLOCK(&gNB_mac->sched_lock);
