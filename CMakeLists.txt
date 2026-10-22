@@ -2078,7 +2078,6 @@ target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_dlsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlsim.c
   ${NFAPI_USER_DIR}/nfapi.c
-  ${NFAPI_USER_DIR}/gnb_ind_vars.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   )
 target_link_libraries(nr_dlsim PRIVATE
@@ -2106,7 +2105,6 @@ target_link_libraries(nr_ulschsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_ulsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
   ${NFAPI_USER_DIR}/nfapi.c
-  ${NFAPI_USER_DIR}/gnb_ind_vars.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   )
 
@@ -2129,7 +2127,6 @@ target_link_libraries(nr_srssim PRIVATE
 add_executable(nr_ulsim_mu_mimo
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim_mu_mimo.c
   ${NFAPI_USER_DIR}/nfapi.c
-  ${NFAPI_USER_DIR}/gnb_ind_vars.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   )
 
