@@ -559,6 +559,31 @@ void vnf_start_p5_thread(void *ptr)
   nfapi_nr_vnf_p5_start((nfapi_nr_vnf_config_t *)ptr);
 }
 
+static void timed_handle_p7_message(uint16_t message_id, void *msg, int len, vnf_p7_t *vnf_p7)
+{
+  int idx;
+  switch (message_id) {
+    case NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION:
+      idx = VNF_MSG_SLOT;
+      break;
+    case NFAPI_NR_PHY_MSG_TYPE_RX_DATA_INDICATION:
+      idx = VNF_MSG_RX_DATA;
+      break;
+    case NFAPI_NR_PHY_MSG_TYPE_CRC_INDICATION:
+      idx = VNF_MSG_CRC;
+      break;
+    case NFAPI_NR_PHY_MSG_TYPE_UCI_INDICATION:
+      idx = VNF_MSG_UCI;
+      break;
+    default:
+      idx = VNF_MSG_OTHER;
+      break;
+  }
+  const uint64_t t0 = vnf_now_ns();
+  vnf_nr_handle_p7_message(msg, len, vnf_p7);
+  vnf_dur_add(&vnf_ul_stats.msg[idx], vnf_now_ns() - t0);
+}
+
 void vnf_nr_reassemble_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t *vnf_p7)
 {
   nfapi_nr_p7_message_header_t messageHeader;
@@ -603,11 +628,12 @@ void vnf_nr_reassemble_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t *vnf_
     }
 
     // vnf_dispatch_p7_message(&messageHeader, pRecvMsg, recvMsgLen, vnf_p7);
-    vnf_nr_handle_p7_message(pRecvMsg, recvMsgLen, vnf_p7);
+    timed_handle_p7_message(messageHeader.message_id, pRecvMsg, recvMsgLen, vnf_p7);
   } else {
     nfapi_vnf_p7_connection_info_t *phy = vnf_p7_connection_info_list_find(vnf_p7, messageHeader.phy_id);
 
     if (phy) {
+      vnf_ul_stats.seg_rx++;
       vnf_p7_rx_message_t *rx_msg = vnf_p7_rx_reassembly_queue_add_segment(vnf_p7,
                                                                            &(phy->reassembly_queue),
                                                                            sequence_num,
@@ -620,8 +646,21 @@ void vnf_nr_reassemble_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t *vnf_
         // send the buffer on
         uint16_t i = 0;
         uint16_t length = 0;
+        uint32_t length32 = 0;
         for (i = 0; i < rx_msg->num_segments_expected; ++i) {
           length += rx_msg->segments[i].length - (i > 0 ? NFAPI_NR_P7_HEADER_LENGTH : 0);
+          length32 += rx_msg->segments[i].length - (i > 0 ? NFAPI_NR_P7_HEADER_LENGTH : 0);
+        }
+        vnf_ul_stats.seg_used += rx_msg->num_segments_expected;
+        vnf_ul_stats.seg_msgs++;
+        if (length32 != length) {
+          vnf_ul_stats.seg_msgs_over64k++;
+          LOG_E(NFAPI_VNF,
+                "[UL-STATS] reassembled msg %d has %u bytes in %d segments, truncated to uint16_t length %u\n",
+                messageHeader.message_id,
+                length32,
+                rx_msg->num_segments_expected,
+                length);
         }
 
         if (phy->reassembly_buffer_size < length) {
@@ -654,7 +693,7 @@ void vnf_nr_reassemble_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t *vnf_
           }
         }
 
-        vnf_nr_handle_p7_message(phy->reassembly_buffer, length, vnf_p7);
+        timed_handle_p7_message(messageHeader.message_id, phy->reassembly_buffer, length, vnf_p7);
 
         // delete the structure
         vnf_p7_rx_reassembly_queue_remove_msg(vnf_p7, &(phy->reassembly_queue), rx_msg);
@@ -701,6 +740,7 @@ int vnf_nr_p7_read_dispatch_message(vnf_p7_t *vnf_p7)
       }
 
       // read the segment
+      const uint64_t t_recv = vnf_now_ns();
       recvfrom_result = recvfrom(vnf_p7->socket,
                                  vnf_p7->rx_message_buffer,
                                  header.message_length,
@@ -708,6 +748,13 @@ int vnf_nr_p7_read_dispatch_message(vnf_p7_t *vnf_p7)
                                  (struct sockaddr *)&remote_addr,
                                  &remote_addr_size);
       NFAPI_TRACE(NFAPI_TRACE_DEBUG, "recvfrom_result = %d from %s():%d\n", recvfrom_result, __FUNCTION__, __LINE__);
+      vnf_ul_stats.recv_ns += vnf_now_ns() - t_recv;
+      if (recvfrom_result > 0) {
+        vnf_ul_stats.dgrams++;
+        vnf_ul_stats.dgram_bytes += recvfrom_result;
+        if ((uint64_t)recvfrom_result > vnf_ul_stats.dgram_max)
+          vnf_ul_stats.dgram_max = recvfrom_result;
+      }
 
       // todo : how to handle incomplete readfroms, need some sort of buffer/select
 
@@ -806,7 +853,10 @@ static int nfapi_nr_vnf_p7_start(nfapi_vnf_p7_config_t *config)
     FD_SET(vnf_p7->socket, &rfds);
     maxSock = vnf_p7->socket;
 
+    const uint64_t t_wait = vnf_now_ns();
     selectRetval = pselect(maxSock + 1, &rfds, NULL, NULL, &pselect_timeout, NULL);
+    const uint64_t t_woken = vnf_now_ns();
+    vnf_ul_stats.idle_ns += t_woken - t_wait;
 
     if (selectRetval == 0) {
       // pselect timed out, continue
@@ -815,6 +865,8 @@ static int nfapi_nr_vnf_p7_start(nfapi_vnf_p7_config_t *config)
       if (FD_ISSET(vnf_p7->socket, &rfds)) {
         vnf_nr_p7_read_dispatch_message(vnf_p7);
       }
+      vnf_ul_stats.busy_ns += vnf_now_ns() - t_woken;
+      vnf_ul_stats_maybe_print(vnf_p7->socket);
     } else {
       // pselect error
       if (selectRetval == -1 && errno == EINTR) {

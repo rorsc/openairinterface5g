@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <time.h>
 
 #include "nfapi_nr_vnf.h"
 #include "vnf_nr.h"
@@ -70,6 +71,169 @@ vnf_p7_t *get_p7_nr_vnf()
 nfapi_vnf_p7_config_t *get_p7_nr_vnf_config()
 {
   return &get_p7_nr_vnf()->_public;
+}
+
+vnf_ul_stats_t vnf_ul_stats;
+
+uint64_t vnf_now_ns(void)
+{
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return t.tv_sec * 1000000000ULL + t.tv_nsec;
+}
+
+void vnf_dur_add(vnf_dur_t *d, uint64_t ns)
+{
+  d->n++;
+  d->ns += ns;
+  if (ns > d->max_ns)
+    d->max_ns = ns;
+}
+
+/* slots between the VNF's current slot and the slot an indication refers to */
+static int64_t vnf_ind_lateness(int sfn, int slot)
+{
+  const nfapi_vnf_p7_connection_info_t *c = get_p7_nr_vnf()->p7_connections;
+  if (c == NULL)
+    return 0;
+  const int max = NFAPI_MAX_SFNSLOTDEC(c->mu);
+  return (NFAPI_SFNSLOT2DEC(c->mu, c->sfn, c->slot) - NFAPI_SFNSLOT2DEC(c->mu, sfn, slot) + max) % max;
+}
+
+/* per-socket "drops" column of /proc/net/udp */
+static uint64_t read_udp_sock_drops(int sock)
+{
+  struct sockaddr_in a;
+  socklen_t l = sizeof(a);
+  if (getsockname(sock, (struct sockaddr *)&a, &l) != 0)
+    return 0;
+  FILE *f = fopen("/proc/net/udp", "r");
+  if (f == NULL)
+    return 0;
+  char line[512];
+  uint64_t drops = 0;
+  if (fgets(line, sizeof(line), f) != NULL) {
+    while (fgets(line, sizeof(line), f) != NULL) {
+      unsigned port;
+      unsigned long long d;
+      if (sscanf(line, " %*d: %*x:%x %*x:%*x %*x %*x:%*x %*x:%*x %*x %*u %*u %*u %*d %*s %llu", &port, &d) == 2
+          && port == ntohs(a.sin_port)) {
+        drops = d;
+        break;
+      }
+    }
+  }
+  fclose(f);
+  return drops;
+}
+
+/* one counter of /proc/net/snmp, e.g. ("Ip:", "ReasmFails") */
+static uint64_t read_snmp(const char *proto, const char *key)
+{
+  FILE *f = fopen("/proc/net/snmp", "r");
+  if (f == NULL)
+    return 0;
+  char names[2048], values[2048];
+  uint64_t ret = 0;
+  while (fgets(names, sizeof(names), f) != NULL && fgets(values, sizeof(values), f) != NULL) {
+    if (strncmp(names, proto, strlen(proto)) != 0)
+      continue;
+    char *sn, *sv;
+    char *n = strtok_r(names, " \n", &sn);
+    char *v = strtok_r(values, " \n", &sv);
+    while (n != NULL && v != NULL) {
+      if (strcmp(n, key) == 0) {
+        ret = strtoull(v, NULL, 10);
+        break;
+      }
+      n = strtok_r(NULL, " \n", &sn);
+      v = strtok_r(NULL, " \n", &sv);
+    }
+    break;
+  }
+  fclose(f);
+  return ret;
+}
+
+#define DUR_FMT "%lu/%lu/%lu"
+#define DUR_ARG(d) (d).n, (d).n ? (d).ns / (d).n / 1000 : 0, (d).max_ns / 1000
+
+void vnf_ul_stats_maybe_print(int p7_sock)
+{
+  vnf_ul_stats_t *s = &vnf_ul_stats;
+  const uint64_t now = vnf_now_ns();
+  if (s->last_print_ns == 0) {
+    s->last_print_ns = now;
+    s->udp_drops = read_udp_sock_drops(p7_sock);
+    s->reasm_fails = read_snmp("Ip:", "ReasmFails");
+    s->rcvbuf_errors = read_snmp("Udp:", "RcvbufErrors");
+    int rcvbuf = 0;
+    socklen_t l = sizeof(rcvbuf);
+    getsockopt(p7_sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &l);
+    LOG_I(NFAPI_VNF, "[UL-STATS] P7 socket SO_RCVBUF %d bytes\n", rcvbuf);
+    return;
+  }
+  const uint64_t period = now - s->last_print_ns;
+  if (period < 1000000000ULL)
+    return;
+
+  const uint64_t udp_drops = read_udp_sock_drops(p7_sock);
+  const uint64_t reasm_fails = read_snmp("Ip:", "ReasmFails");
+  const uint64_t rcvbuf_errors = read_snmp("Udp:", "RcvbufErrors");
+  const double sec = period / 1e9;
+
+  LOG_I(NFAPI_VNF,
+        "[UL-STATS] %.2fs: P7 thread busy %.1f%% | dgrams %lu (%.2f Mbps, max %lu B, recv %lu us) | segments %lu (used %lu) "
+        "-> msgs %lu (>64KiB: %lu) | sock drops +%lu, Ip ReasmFails +%lu, Udp RcvbufErrors +%lu\n",
+        sec,
+        100.0 * s->busy_ns / (s->busy_ns + s->idle_ns + 1),
+        s->dgrams,
+        s->dgram_bytes * 8 / sec / 1e6,
+        s->dgram_max,
+        s->recv_ns / 1000,
+        s->seg_rx,
+        s->seg_used,
+        s->seg_msgs,
+        s->seg_msgs_over64k,
+        udp_drops - s->udp_drops,
+        reasm_fails - s->reasm_fails,
+        rcvbuf_errors - s->rcvbuf_errors);
+  LOG_I(NFAPI_VNF,
+        "[UL-STATS] msg n/avg/max us: SLOT " DUR_FMT " RX_DATA " DUR_FMT " CRC " DUR_FMT " UCI " DUR_FMT " other " DUR_FMT
+        " | cb: sched " DUR_FMT " send " DUR_FMT " rx " DUR_FMT " crc " DUR_FMT " uci " DUR_FMT "\n",
+        DUR_ARG(s->msg[VNF_MSG_SLOT]),
+        DUR_ARG(s->msg[VNF_MSG_RX_DATA]),
+        DUR_ARG(s->msg[VNF_MSG_CRC]),
+        DUR_ARG(s->msg[VNF_MSG_UCI]),
+        DUR_ARG(s->msg[VNF_MSG_OTHER]),
+        DUR_ARG(s->sched),
+        DUR_ARG(s->send),
+        DUR_ARG(s->rx_cb),
+        DUR_ARG(s->crc_cb),
+        DUR_ARG(s->uci_cb));
+  LOG_I(NFAPI_VNF,
+        "[UL-STATS] PUSCH granted %lu (retx %lu, %.2f Mbps) | RX_DATA ind %lu pdus %lu (len0 %lu, %.2f Mbps) late avg/max "
+        "%.1f/%ld slots | CRC ind %lu crcs %lu (fail %lu) late avg/max %.1f/%ld slots\n",
+        s->pusch,
+        s->pusch_retx,
+        s->pusch_bytes * 8 / sec / 1e6,
+        s->rx_ind,
+        s->rx_pdus,
+        s->rx_len0,
+        s->rx_bytes * 8 / sec / 1e6,
+        s->rx_ind ? (double)s->rx_late_sum / s->rx_ind : 0.0,
+        s->rx_late_max,
+        s->crc_ind,
+        s->crcs,
+        s->crc_fail,
+        s->crc_ind ? (double)s->crc_late_sum / s->crc_ind : 0.0,
+        s->crc_late_max);
+
+  memset(s, 0, sizeof(*s));
+  s->last_print_ns = now;
+  s->udp_drops = udp_drops;
+  s->reasm_fails = reasm_fails;
+  s->rcvbuf_errors = rcvbuf_errors;
 }
 
 int vnf_nr_pack_vendor_extension_tlv(void *ve, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p4_p5_codec_config_t *codec)
@@ -197,6 +361,7 @@ int phy_nr_rach_indication(nfapi_nr_rach_indication_t *ind)
 
 int phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
 {
+  const uint64_t t0 = vnf_now_ns();
   nfapi_nr_uci_t *uci_list = ind->uci_list;
   for (int i = 0; i < ind->num_ucis; i++) {
     switch (uci_list[i].pdu_type) {
@@ -220,27 +385,50 @@ int phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
     }
   }
   ind->num_ucis = 0;
+  vnf_dur_add(&vnf_ul_stats.uci_cb, vnf_now_ns() - t0);
   return 1;
 }
 
 int phy_nr_crc_indication(nfapi_nr_crc_indication_t *ind)
 {
+  const uint64_t t0 = vnf_now_ns();
+  vnf_ul_stats_t *s = &vnf_ul_stats;
+  const int64_t late = vnf_ind_lateness(ind->sfn, ind->slot);
+  s->crc_ind++;
+  s->crc_late_sum += late;
+  if (late > s->crc_late_max)
+    s->crc_late_max = late;
   for (int i = 0; i < ind->number_crcs; i++) {
     const nfapi_nr_crc_t *crc = &ind->crc_list[i];
+    s->crcs++;
+    if (crc->tb_crc_status)
+      s->crc_fail++;
     nr_rx_sdu_crc(0, 0, ind->sfn, ind->slot, crc);
   }
   ind->number_crcs = 0;
+  vnf_dur_add(&s->crc_cb, vnf_now_ns() - t0);
   return 1;
 }
 
 int phy_nr_rx_data_indication(nfapi_nr_rx_data_indication_t *ind)
 {
-
+  const uint64_t t0 = vnf_now_ns();
+  vnf_ul_stats_t *s = &vnf_ul_stats;
+  const int64_t late = vnf_ind_lateness(ind->sfn, ind->slot);
+  s->rx_ind++;
+  s->rx_late_sum += late;
+  if (late > s->rx_late_max)
+    s->rx_late_max = late;
   for (int i = 0; i < ind->number_of_pdus; i++) {
     const nfapi_nr_rx_data_pdu_t *rx = &ind->pdu_list[i];
+    s->rx_pdus++;
+    s->rx_bytes += rx->pdu_length;
+    if (rx->pdu_length == 0)
+      s->rx_len0++;
     nr_rx_sdu_rx(0, 0, ind->sfn, ind->slot, rx);
   }
   ind->number_of_pdus = 0;
+  vnf_dur_add(&s->rx_cb, vnf_now_ns() - t0);
   return 1;
 }
 
@@ -260,7 +448,19 @@ int phy_nr_slot_indication(nfapi_nr_slot_indication_scf_t *ind)
   // also, phy_nr_slot_indication() is only executed by one thread, serially
   static NR_Sched_Rsp_t sched_response;
   NR_IF_Module_t *ifi = RC.nrmac[0]->if_inst;
+  const uint64_t t0 = vnf_now_ns();
   ifi->NR_slot_indication(ind, &sched_response);
+  const uint64_t t1 = vnf_now_ns();
+  vnf_dur_add(&vnf_ul_stats.sched, t1 - t0);
+  for (int i = 0; i < sched_response.UL_tti_req.n_pdus; i++) {
+    const nfapi_nr_ul_tti_request_number_of_pdus_t *p = &sched_response.UL_tti_req.pdus_list[i];
+    if (p->pdu_type != NFAPI_NR_UL_CONFIG_PUSCH_PDU_TYPE)
+      continue;
+    vnf_ul_stats.pusch++;
+    if (p->pusch_pdu.pusch_data.rv_index != 0)
+      vnf_ul_stats.pusch_retx++;
+    vnf_ul_stats.pusch_bytes += p->pusch_pdu.pusch_data.tb_size;
+  }
 
     // The scheduler does not stamp the cell identity onto the requests it produces,
     // so carry it over from the indication that triggered this slot. Once the MAC
@@ -306,6 +506,7 @@ int phy_nr_slot_indication(nfapi_nr_slot_indication_scf_t *ind)
   if (sched_response.UL_dci_req.numPdus > 0)
     oai_nfapi_ul_dci_req(&sched_response.UL_dci_req);
 #endif
+  vnf_dur_add(&vnf_ul_stats.send, vnf_now_ns() - t1);
 
   /* the below works because the function behind the callback collects
    * messages from queue into which messages have been copied.
