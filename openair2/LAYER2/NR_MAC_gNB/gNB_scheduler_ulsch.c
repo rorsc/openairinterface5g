@@ -946,7 +946,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
                        const int CC_idP,
                        const frame_t frameP,
                        const slot_t slotP,
-                       const rnti_t rntiP,
+                       NR_UE_info_t *UE,
                        uint8_t *sduP,
                        const uint32_t sdu_lenP,
                        const int8_t harq_pid,
@@ -958,120 +958,114 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
                        rnti_t *rlc_rnti)
 {
   gNB_MAC_INST *gNB_mac = RC.nrmac[gnb_mod_idP];
-  const int current_rnti = rntiP;
-  LOG_D(NR_MAC, "rx_sdu for rnti %04x\n", current_rnti);
   const int target_snrx10 = gNB_mac->pusch_target_snrx10;
   const int rssi_threshold = gNB_mac->pusch_rssi_threshold;
   const int pusch_failure_thres = gNB_mac->pusch_failure_thres;
-  NR_UE_info_t *UE = find_nr_UE(&gNB_mac->UE_info, current_rnti);
-  if (UE) {
-    NR_UE_sched_ctrl_t *UE_scheduling_control = &UE->UE_sched_ctrl;
-    if (sduP)
-      T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
-        T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(harq_pid),
-        T_BUFFER(sduP, sdu_lenP));
+  NR_UE_sched_ctrl_t *UE_scheduling_control = &UE->UE_sched_ctrl;
+  if (sduP)
+    T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
+      T_INT(UE->rnti), T_INT(frameP), T_INT(slotP), T_INT(harq_pid),
+      T_BUFFER(sduP, sdu_lenP));
 
-    UE->mac_stats.ul.total_bytes += sdu_lenP;
-    LOG_D(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
-          gnb_mod_idP,
-          harq_pid,
-          CC_idP,
-          frameP,
-          slotP,
-          current_rnti,
-          ul_cqi,
-          timing_advance,
-          sduP,
-          rssi);
-    if (harq_pid < 0) {
-      LOG_E(NR_MAC, "UE %04x received ULSCH when feedback UL HARQ %d (unexpected ULSCH transmission)\n", rntiP, harq_pid);
-      return;
-    }
+  UE->mac_stats.ul.total_bytes += sdu_lenP;
+  LOG_D(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
+        gnb_mod_idP,
+        harq_pid,
+        CC_idP,
+        frameP,
+        slotP,
+        UE->rnti,
+        ul_cqi,
+        timing_advance,
+        sduP,
+        rssi);
+  if (harq_pid < 0) {
+    LOG_E(NR_MAC, "UE %04x received ULSCH when feedback UL HARQ %d (unexpected ULSCH transmission)\n", UE->rnti, harq_pid);
+    return;
+  }
 
-    // if not missed detection (10dB threshold for now)
-    if (rssi > 0) {
-      int txpower_calc = UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.phr_txpower_calc;
-      UE->mac_stats.deltaMCS = txpower_calc;
-      UE->mac_stats.NPRB = UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.rbSize;
-      if (ul_cqi != 0xff)
-        UE_scheduling_control->tpc0 = nr_get_tpc(target_snrx10, ul_cqi, 30, txpower_calc);
-      if (UE_scheduling_control->ph < 0 && UE_scheduling_control->tpc0 > 1)
-        UE_scheduling_control->tpc0 = 1;
-
-      UE_scheduling_control->tpc0 = nr_limit_tpc(UE_scheduling_control->tpc0, rssi, rssi_threshold);
-
-      if (timing_advance != 0xffff)
-        UE_scheduling_control->ta_update = timing_advance;
-      UE_scheduling_control->raw_rssi = rssi;
-      UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640 - (txpower_calc * 10);
-      if (UE_scheduling_control->tpc0 > 1)
-        LOG_D(NR_MAC,
-              "[UE %04x] %d.%d. PUSCH TPC %d and TA %d pusch_snrx10 %d rssi %d phrx_tx_power %d PHR (1PRB) %d mcs %d, nb_rb %d\n",
-              UE->rnti,
-              frameP,
-              slotP,
-              UE_scheduling_control->tpc0,
-              UE_scheduling_control->ta_update,
-              UE_scheduling_control->pusch_snrx10,
-              UE_scheduling_control->raw_rssi,
-              txpower_calc,
-              UE_scheduling_control->ph,
-              UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.mcs,
-              UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.rbSize);
-
-      NR_UE_ul_harq_t *cur_harq = &UE_scheduling_control->ul_harq_processes[harq_pid];
-      if (cur_harq->round == 0)
-        UE->mac_stats.pusch_snrx10 = UE_scheduling_control->pusch_snrx10;
-      LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update);
-    }
-    else{
-      LOG_D(NR_MAC,"[UE %04x] Detected DTX : increasing UE TX power\n",UE->rnti);
+  // if not missed detection (10dB threshold for now)
+  if (rssi > 0) {
+    int txpower_calc = UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.phr_txpower_calc;
+    UE->mac_stats.deltaMCS = txpower_calc;
+    UE->mac_stats.NPRB = UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.rbSize;
+    if (ul_cqi != 0xff)
+      UE_scheduling_control->tpc0 = nr_get_tpc(target_snrx10, ul_cqi, 30, txpower_calc);
+    if (UE_scheduling_control->ph < 0 && UE_scheduling_control->tpc0 > 1)
       UE_scheduling_control->tpc0 = 1;
-    }
+
+    UE_scheduling_control->tpc0 = nr_limit_tpc(UE_scheduling_control->tpc0, rssi, rssi_threshold);
+
+    if (timing_advance != 0xffff)
+      UE_scheduling_control->ta_update = timing_advance;
+    UE_scheduling_control->raw_rssi = rssi;
+    UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640 - (txpower_calc * 10);
+    if (UE_scheduling_control->tpc0 > 1)
+      LOG_D(NR_MAC,
+            "[UE %04x] %d.%d. PUSCH TPC %d and TA %d pusch_snrx10 %d rssi %d phrx_tx_power %d PHR (1PRB) %d mcs %d, nb_rb %d\n",
+            UE->rnti,
+            frameP,
+            slotP,
+            UE_scheduling_control->tpc0,
+            UE_scheduling_control->ta_update,
+            UE_scheduling_control->pusch_snrx10,
+            UE_scheduling_control->raw_rssi,
+            txpower_calc,
+            UE_scheduling_control->ph,
+            UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.mcs,
+            UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.rbSize);
+
+    NR_UE_ul_harq_t *cur_harq = &UE_scheduling_control->ul_harq_processes[harq_pid];
+    if (cur_harq->round == 0)
+      UE->mac_stats.pusch_snrx10 = UE_scheduling_control->pusch_snrx10;
+    LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update);
+  }
+  else{
+    LOG_D(NR_MAC,"[UE %04x] Detected DTX : increasing UE TX power\n",UE->rnti);
+    UE_scheduling_control->tpc0 = 1;
+  }
 
 #if defined(ENABLE_MAC_PAYLOAD_DEBUG)
 
-    LOG_I(NR_MAC, "Printing received UL MAC payload at gNB side: %d \n");
-    for (uint32_t i = 0; i < sdu_lenP; i++) {
-      // harq_process_ul_ue->a[i] = (unsigned char) rand();
-      // printf("a[%d]=0x%02x\n",i,harq_process_ul_ue->a[i]);
-      printf("%02x ", (unsigned char)sduP[i]);
-    }
-    printf("\n");
+  LOG_I(NR_MAC, "Printing received UL MAC payload at gNB side: %d \n");
+  for (uint32_t i = 0; i < sdu_lenP; i++) {
+    // harq_process_ul_ue->a[i] = (unsigned char) rand();
+    // printf("a[%d]=0x%02x\n",i,harq_process_ul_ue->a[i]);
+    printf("%02x ", (unsigned char)sduP[i]);
+  }
+  printf("\n");
 
 #endif
 
-    if (sduP != NULL) {
-      LOG_D(NR_MAC, "Received PDU at MAC gNB \n");
-      UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt = 0;
-      UE_scheduling_control->sched_ul_bytes -= sdu_lenP;
-      if (UE_scheduling_control->sched_ul_bytes < 0)
-        UE_scheduling_control->sched_ul_bytes = 0;
+  if (sduP != NULL) {
+    LOG_D(NR_MAC, "Received PDU at MAC gNB \n");
+    UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt = 0;
+    UE_scheduling_control->sched_ul_bytes -= sdu_lenP;
+    if (UE_scheduling_control->sched_ul_bytes < 0)
+      UE_scheduling_control->sched_ul_bytes = 0;
 
-      struct timespec nr_process_mac_pdu_ts;
-      LATENCY_HIST_START(nr_process_mac_pdu_ts);
-      *rlc_rnti = UE->rnti;
-      nr_process_mac_pdu(gnb_mod_idP, UE, CC_idP, frameP, slotP, sduP, sdu_lenP, harq_pid, data_ind, num_data_ind);
-      latency_hist_record("nr_process_mac_pdu", latency_hist_elapsed_us(&nr_process_mac_pdu_ts));
-    } else {
-      if (ul_cqi == 0xff || ul_cqi <= 128) {
-        UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt++;
-        UE->mac_stats.ulsch_DTX++;
-      }
-
-      if (!get_softmodem_params()->phy_test && UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt >= pusch_failure_thres) {
-        LOG_W(NR_MAC,
-              "%4d.%2d UE %04x: Detected UL Failure on PUSCH after %d PUSCH DTX, stopping scheduling\n",
-              frameP,
-              slotP,
-              UE->rnti,
-              UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt);
-        nr_mac_trigger_ul_failure(&UE->UE_sched_ctrl, UE->current_UL_BWP.scs);
-      }
+    struct timespec nr_process_mac_pdu_ts;
+    LATENCY_HIST_START(nr_process_mac_pdu_ts);
+    *rlc_rnti = UE->rnti;
+    nr_process_mac_pdu(gnb_mod_idP, UE, CC_idP, frameP, slotP, sduP, sdu_lenP, harq_pid, data_ind, num_data_ind);
+    latency_hist_record("nr_process_mac_pdu", latency_hist_elapsed_us(&nr_process_mac_pdu_ts));
+  } else {
+    if (ul_cqi == 0xff || ul_cqi <= 128) {
+      UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt++;
+      UE->mac_stats.ulsch_DTX++;
     }
-    handle_nr_ul_harq(gNB_mac, UE, frameP, slotP, current_rnti, harq_pid, sduP == NULL);
-    nr_rx_ra_sdu(gnb_mod_idP, CC_idP, frameP, slotP, current_rnti, sduP, sdu_lenP, harq_pid, timing_advance, ul_cqi, rssi, data_ind, num_data_ind, rlc_rnti);
+
+    if (!get_softmodem_params()->phy_test && UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt >= pusch_failure_thres) {
+      LOG_W(NR_MAC,
+            "%4d.%2d UE %04x: Detected UL Failure on PUSCH after %d PUSCH DTX, stopping scheduling\n",
+            frameP,
+            slotP,
+            UE->rnti,
+            UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt);
+      nr_mac_trigger_ul_failure(&UE->UE_sched_ctrl, UE->current_UL_BWP.scs);
+    }
   }
+  handle_nr_ul_harq(gNB_mac, UE, frameP, slotP, UE->rnti, harq_pid, sduP == NULL);
 }
 
 void nr_rx_sdu(const module_id_t gnb_mod_idP,
@@ -1092,7 +1086,13 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
   int num_data_ind = 0;
   rnti_t rlc_rnti = 0;
   start_meas(&gNB_mac->rx_ulsch_sdu);
-  _nr_rx_sdu(gnb_mod_idP, CC_idP, frameP, slotP, rntiP, sduP, sdu_lenP, harq_pid, timing_advance, ul_cqi, rssi, data_ind, &num_data_ind, &rlc_rnti);
+  NR_UE_info_t *UE = find_nr_UE(&gNB_mac->UE_info, rntiP);
+  if (UE) {
+    DevAssert(UE->rnti == rntiP);
+    _nr_rx_sdu(gnb_mod_idP, CC_idP, frameP, slotP, UE, sduP, sdu_lenP, harq_pid, timing_advance, ul_cqi, rssi, data_ind, &num_data_ind, &rlc_rnti);
+  } else {
+    nr_rx_ra_sdu(gnb_mod_idP, CC_idP, frameP, slotP, rntiP, sduP, sdu_lenP, harq_pid, timing_advance, ul_cqi, rssi, data_ind, &num_data_ind, &rlc_rnti);
+  }
   stop_meas(&gNB_mac->rx_ulsch_sdu);
   NR_SCHED_UNLOCK(&gNB_mac->sched_lock);
   // RLC has its own lock: deliver outside sched_lock. data_ind[] points into sduP.
