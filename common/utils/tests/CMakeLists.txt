@@ -13,3 +13,8 @@ add_test(NAME test_fsn COMMAND ./test_fsn)
 add_executable(test_bits test_bits.c)
 add_dependencies(tests test_bits)
 add_test(NAME test_bits COMMAND ./test_bits)
+
+add_executable(test_mempool test_mempool.c)
+target_link_libraries(test_mempool PRIVATE utils)
+add_dependencies(tests test_mempool)
+add_test(NAME test_mempool COMMAND ./test_mempool)
