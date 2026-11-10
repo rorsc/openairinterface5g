@@ -32,6 +32,13 @@
 #include "common/utils/time_stat.h"
 #include "common/utils/assertions.h"
 
+/* Maximum number of SDUs stored by an entity; further SDUs are dropped. At
+ * 1 Gbit/s of 1400-byte SDUs, 16384 SDUs are 180 ms of traffic: in flight,
+ * waiting for a STATUS PDU, or queued. */
+#define NR_RLC_MAX_SDUS 16384
+/* TM is for SRB0 only, with a few small messages */
+#define NR_RLC_TM_MAX_SDUS 64
+
 static void nr_rlc_entity_get_stats(
     nr_rlc_entity_t *entity,
     nr_rlc_statistics_t *out)
@@ -146,6 +153,7 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->common.txsdu_avg_time_to_tx = time_average_new(100 * 1000, 1024);
 
   ret->rx = nr_rlc_new_rx_manager(1 << (sn_field_length - 1));
+  ret->common.sdu_pools = nr_rlc_new_sdu_pools(NR_RLC_MAX_SDUS);
 
   return (nr_rlc_entity_t *)ret;
 }
@@ -200,6 +208,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
    */
   ret->common.txsdu_avg_time_to_tx = time_average_new(100 * 1000, 1024);
 
+  ret->common.sdu_pools = nr_rlc_new_sdu_pools(NR_RLC_MAX_SDUS);
+
   return (nr_rlc_entity_t *)ret;
 }
 
@@ -240,6 +250,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_tm(
    * initial_size of 1024 is arbitrary
    */
   ret->common.txsdu_avg_time_to_tx = time_average_new(100 * 1000, 1024);
+
+  ret->common.sdu_pools = nr_rlc_new_sdu_pools(NR_RLC_TM_MAX_SDUS);
 
   return (nr_rlc_entity_t *)ret;
 }

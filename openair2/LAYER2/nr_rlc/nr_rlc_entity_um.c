@@ -439,11 +439,7 @@ static nr_rlc_sdu_segment_t *resegment(nr_rlc_sdu_segment_t *sdu,
   if (pdu_header_size + 1 > pdu_size)
     return NULL;
 
-  next = calloc(1, sizeof(nr_rlc_sdu_segment_t));
-  if (next == NULL) {
-    LOG_E(RLC, "%s:%d:%s: out of memory\n", __FILE__, __LINE__,  __FUNCTION__);
-    exit(1);
-  }
+  next = nr_rlc_alloc_sdu_segment(entity->common.sdu_pools);
   *next = *sdu;
 
   over_size = pdu_header_size + sdu->size - pdu_size;
@@ -529,7 +525,7 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
     time_average_add(entity->common.txsdu_avg_time_to_tx, time_now, waited_time);
   }
 
-  nr_rlc_free_sdu_segment(sdu);
+  nr_rlc_free_sdu_segment(entity->common.sdu_pools, sdu);
 
   return ret;
 }
@@ -583,7 +579,8 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
     entity->t_log_buffer_full = entity->t_current;
   }
 
-  if (entity->tx_size + size > entity->tx_maxsize) {
+  sdu = entity->tx_size + size <= entity->tx_maxsize ? nr_rlc_new_sdu(entity->common.sdu_pools, buffer, size, sdu_id) : NULL;
+  if (sdu == NULL) {
     entity->sdu_rejected++;
 
     entity->common.stats.rxsdu_dd_pkts++;
@@ -593,8 +590,6 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
   }
 
   entity->tx_size += size;
-
-  sdu = nr_rlc_new_sdu(buffer, size, sdu_id);
 
   nr_rlc_sdu_segment_list_append(&entity->tx_list, &entity->tx_end, sdu);
 
@@ -708,7 +703,7 @@ void nr_rlc_entity_um_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id)
   entity->common.bstatus.tx_size -= compute_pdu_header_size(entity, cur)
                                     + cur->size;
 
-  nr_rlc_free_sdu_segment(cur);
+  nr_rlc_free_sdu_segment(entity->common.sdu_pools, cur);
 }
 
 static void clear_entity(nr_rlc_entity_um_t *entity)
@@ -737,7 +732,7 @@ static void clear_entity(nr_rlc_entity_um_t *entity)
   entity->rx_list = NULL;
   entity->rx_size = 0;
 
-  nr_rlc_free_sdu_segment_list(entity->tx_list);
+  nr_rlc_free_sdu_segment_list(entity->common.sdu_pools, entity->tx_list);
 
   entity->tx_list         = NULL;
   entity->tx_end          = NULL;
@@ -756,6 +751,7 @@ void nr_rlc_entity_um_delete(nr_rlc_entity_t *_entity)
 {
   nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)_entity;
   clear_entity(entity);
+  nr_rlc_delete_sdu_pools(entity->common.sdu_pools);
   time_average_free(entity->common.txsdu_avg_time_to_tx);
   free(entity);
 }

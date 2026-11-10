@@ -22,6 +22,7 @@
 #ifndef _NR_RLC_SDU_H_
 #define _NR_RLC_SDU_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct nr_rlc_sdu_t {
@@ -53,14 +54,22 @@ typedef struct nr_rlc_sdu_segment_t {
   struct nr_rlc_sdu_segment_t *next;
 } nr_rlc_sdu_segment_t;
 
-nr_rlc_sdu_segment_t *nr_rlc_new_sdu(
-    char *buffer, int size,
-    int upper_layer_id);
+/* Memory for the SDUs of one RLC entity. Not thread-safe: all accesses to an
+ * entity are serialized by the RLC manager lock. */
+typedef struct nr_rlc_sdu_pools_s nr_rlc_sdu_pools_t;
+nr_rlc_sdu_pools_t *nr_rlc_new_sdu_pools(int max_sdus);
+/* all SDUs must have been freed */
+void nr_rlc_delete_sdu_pools(nr_rlc_sdu_pools_t *pools);
+/* NULL if the pools are full: the SDU is to be dropped, like when the RLC
+ * buffer is full */
+nr_rlc_sdu_segment_t *nr_rlc_new_sdu(nr_rlc_sdu_pools_t *pools, char *buffer, int size, int upper_layer_id);
+/* uninitialized segment, to be freed with nr_rlc_free_sdu_segment() */
+nr_rlc_sdu_segment_t *nr_rlc_alloc_sdu_segment(nr_rlc_sdu_pools_t *pools);
 /* return 1 if the SDU has been freed too, 0 if not (more segments to free) */
-int nr_rlc_free_sdu_segment(nr_rlc_sdu_segment_t *sdu);
+int nr_rlc_free_sdu_segment(nr_rlc_sdu_pools_t *pools, nr_rlc_sdu_segment_t *sdu);
 void nr_rlc_sdu_segment_list_append(nr_rlc_sdu_segment_t **list,
                                     nr_rlc_sdu_segment_t **end,
                                     nr_rlc_sdu_segment_t *sdu);
-void nr_rlc_free_sdu_segment_list(nr_rlc_sdu_segment_t *l);
+void nr_rlc_free_sdu_segment_list(nr_rlc_sdu_pools_t *pools, nr_rlc_sdu_segment_t *l);
 
 #endif /* _NR_RLC_SDU_H_ */

@@ -557,7 +557,7 @@ process_wait_list_head:
         prev_wait_list->next = cur_wait_list->next;
         if (cur_wait_list == entity->wait_end)
           end_wait_list = prev_wait_list;
-        if (nr_rlc_free_sdu_segment(cur_wait_list)) {
+        if (nr_rlc_free_sdu_segment(entity->common.sdu_pools, cur_wait_list)) {
           entity->tx_size -= sdu_size;
           // Wait-ACK: count as successfully transmitted bytes
           entity->common.stats.txsdu_bytes += sdu_size;
@@ -622,7 +622,7 @@ process_retransmit_list_head:
         /* update buffer status */
         entity->common.bstatus.retx_size -= compute_pdu_header_size(entity, cur)
                                             + cur->size;
-        if (nr_rlc_free_sdu_segment(cur)) {
+        if (nr_rlc_free_sdu_segment(entity->common.sdu_pools, cur)) {
           entity->tx_size -= sdu_size;
           // Retransmit-ACK: count as successfully transmitted bytes
           entity->common.stats.txsdu_bytes += sdu_size;
@@ -681,7 +681,7 @@ lists_over:
     prev_wait_list->next = cur_wait_list->next;
     if (cur_wait_list == entity->wait_end)
       end_wait_list = prev_wait_list;
-    if (nr_rlc_free_sdu_segment(cur_wait_list)) {
+    if (nr_rlc_free_sdu_segment(entity->common.sdu_pools, cur_wait_list)) {
       entity->tx_size -= sdu_size;
       // Wait-NACK done: count as successfully transmitted bytes
       entity->common.stats.txsdu_bytes += sdu_size;
@@ -704,7 +704,7 @@ lists_over:
     /* update buffer status */
     entity->common.bstatus.retx_size -= compute_pdu_header_size(entity, cur)
                                         + cur->size;
-    if (nr_rlc_free_sdu_segment(cur)) {
+    if (nr_rlc_free_sdu_segment(entity->common.sdu_pools, cur)) {
       entity->tx_size -= sdu_size;
       // Retransmit-NACK done: count as successfully transmitted bytes
       entity->common.stats.txsdu_bytes += sdu_size;
@@ -989,8 +989,7 @@ static nr_rlc_sdu_segment_t *resegment(nr_rlc_sdu_segment_t *sdu,
 
   pdu_header_size = compute_pdu_header_size(entity, sdu);
 
-  next = calloc(1, sizeof(nr_rlc_sdu_segment_t));
-  AssertFatal(next != NULL, "out of memory\n");
+  next = nr_rlc_alloc_sdu_segment(entity->common.sdu_pools);
   *next = *sdu;
 
   over_size = pdu_header_size + sdu->size - pdu_size;
@@ -1834,7 +1833,8 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
     entity->t_log_buffer_full = entity->t_current;
   }
 
-  if (entity->tx_size + size > entity->tx_maxsize) {
+  sdu = entity->tx_size + size <= entity->tx_maxsize ? nr_rlc_new_sdu(entity->common.sdu_pools, buffer, size, sdu_id) : NULL;
+  if (sdu == NULL) {
     entity->sdu_rejected++;
     entity->common.stats.txpdu_dd_pkts++;
     entity->common.stats.txpdu_dd_bytes += size;
@@ -1844,8 +1844,6 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
   entity->tx_size += size;
   // SDU received: Count as arrival bytes
   entity->common.stats.rxsdu_bytes += size;
-
-  sdu = nr_rlc_new_sdu(buffer, size, sdu_id);
 
   LOG_D(RLC, "Created new RLC SDU and append it to the RLC list \n");
 
@@ -2044,7 +2042,7 @@ void nr_rlc_entity_am_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id)
   /* Uncomment to assert if SDU are ever discarded */
   // assert(0 != 0 && "[RLC-TRAP] SDU discard should never be reached!");
 
-  nr_rlc_free_sdu_segment(cur);
+  nr_rlc_free_sdu_segment(entity->common.sdu_pools, cur);
 }
 
 static void clear_entity(nr_rlc_entity_am_t *entity)
@@ -2075,9 +2073,9 @@ static void clear_entity(nr_rlc_entity_am_t *entity)
   nr_rlc_clear_rx_manager(entity->rx);
   entity->rx_size = 0;
 
-  nr_rlc_free_sdu_segment_list(entity->tx_list);
-  nr_rlc_free_sdu_segment_list(entity->wait_list);
-  nr_rlc_free_sdu_segment_list(entity->retransmit_list);
+  nr_rlc_free_sdu_segment_list(entity->common.sdu_pools, entity->tx_list);
+  nr_rlc_free_sdu_segment_list(entity->common.sdu_pools, entity->wait_list);
+  nr_rlc_free_sdu_segment_list(entity->common.sdu_pools, entity->retransmit_list);
 
   entity->tx_list         = NULL;
   entity->tx_end          = NULL;
@@ -2103,6 +2101,7 @@ void nr_rlc_entity_am_delete(nr_rlc_entity_t *_entity)
 {
   nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t *)_entity;
   clear_entity(entity);
+  nr_rlc_delete_sdu_pools(entity->common.sdu_pools);
   nr_rlc_free_rx_manager(entity->rx);
   time_average_free(entity->common.txsdu_avg_time_to_tx);
   free(entity);
