@@ -5,19 +5,20 @@
 #ifndef MEMPOOL_H_
 #define MEMPOOL_H_
 
+#include <stdatomic.h>
 #include <stddef.h>
-#include <pthread.h>
+#include <stdint.h>
 
-union block;
-typedef union block block_t;
+/* Fixed-size block pool. Thread-safe and lock-free: the free blocks form a
+ * stack whose head is updated with compare-and-swap. */
 typedef struct mempool {
-  block_t *freelist;
-  block_t *data;
-  pthread_mutex_t mtx;
+  _Atomic uint64_t head; /* (ABA tag << 32) | (index of top free block + 1), 0: empty */
+  _Atomic uint32_t *next; /* next[i]: index + 1 of the free block below block i */
+  uint8_t *data;
   size_t block_size; /* power of two */
+  unsigned shift; /* log2(block_size) */
   size_t n_blocks;
-  size_t n_used; /* blocks [0, n_used) have been handed out at least once */
-  size_t alloc;
+  _Atomic size_t n_used; /* blocks [0, n_used) have been handed out at least once */
 } mempool_t;
 
 /* block_size is rounded up to a power of two. Memory is only touched when

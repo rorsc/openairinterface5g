@@ -3,6 +3,9 @@
  */
 
 #include <assert.h>
+#include <pthread.h>
+#include <stdatomic.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -65,9 +68,64 @@ void large_unused(void)
   }
 }
 
+/* threads concurrently allocate and free; a block owned by two threads at once
+ * (e.g., ABA on the free list) shows as a corrupted owner tag */
+#define STRESS_THREADS 8
+#define STRESS_BLOCKS 64
+#define STRESS_ITER 200000
+typedef struct {
+  mempool_t *mp;
+  uintptr_t id;
+  atomic_size_t *n_alloc;
+} stress_arg_t;
+
+static void *stress(void *arg)
+{
+  stress_arg_t *a = arg;
+  uintptr_t *held[STRESS_BLOCKS / STRESS_THREADS * 2];
+  size_t n_held = 0;
+  for (size_t i = 0; i < STRESS_ITER; ++i) {
+    if (n_held < sizeof(held) / sizeof(held[0]) && (i % 3 != 2 || n_held == 0)) {
+      uintptr_t *b = mp_alloc(a->mp);
+      if (!b)
+        continue;
+      atomic_fetch_add(a->n_alloc, 1);
+      *b = a->id;
+      held[n_held++] = b;
+    } else {
+      uintptr_t *b = held[--n_held];
+      assert(*b == a->id);
+      mp_free(a->mp, b);
+    }
+    for (size_t j = 0; j < n_held; ++j)
+      assert(*held[j] == a->id);
+  }
+  while (n_held > 0)
+    mp_free(a->mp, held[--n_held]);
+  return NULL;
+}
+
+void concurrent(void)
+{
+  mempool_t mp;
+  mp_init(&mp, sizeof(uintptr_t), STRESS_BLOCKS);
+  atomic_size_t n_alloc = 0;
+  pthread_t t[STRESS_THREADS];
+  stress_arg_t a[STRESS_THREADS];
+  for (int i = 0; i < STRESS_THREADS; ++i) {
+    a[i] = (stress_arg_t){.mp = &mp, .id = i + 1, .n_alloc = &n_alloc};
+    assert(pthread_create(&t[i], NULL, stress, &a[i]) == 0);
+  }
+  for (int i = 0; i < STRESS_THREADS; ++i)
+    pthread_join(t[i], NULL);
+  printf("concurrent: %zu allocations\n", atomic_load(&n_alloc));
+  mp_destroy(&mp); // asserts that all blocks are free
+}
+
 int main(void)
 {
   simple();
   rounding_reuse();
   large_unused();
+  concurrent();
 }
