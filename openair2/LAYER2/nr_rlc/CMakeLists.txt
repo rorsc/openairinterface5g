@@ -9,7 +9,7 @@ add_library(nr_rlc_core OBJECT
             nr_rlc_sdu.c
             nr_rlc_rx_manager.c)
 target_include_directories(nr_rlc_core PRIVATE ../../..)
-target_link_libraries(nr_rlc_core PRIVATE log_headers)
+target_link_libraries(nr_rlc_core PRIVATE log_headers utils)
 add_library(nr_rlc STATIC
             asn1_utils.c
             nr_rlc_oai_api.c

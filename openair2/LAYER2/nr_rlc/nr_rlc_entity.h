@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "common/utils/time_stat.h"
+#include "nr_rlc_sdu.h"
 
 #define NR_SDU_MAX 16000   /* max NR PDCP SDU size is 9000, let's take more */
 
@@ -112,6 +113,9 @@ typedef struct nr_rlc_entity_s {
   void *max_retx_reached_data;
   /* buffer status computation */
   nr_rlc_entity_buffer_status_t bstatus;
+
+  /* memory for the SDUs of this entity */
+  nr_rlc_sdu_pools_t *sdu_pools;
 
   nr_rlc_statistics_t stats;
   time_average_t *txsdu_avg_time_to_tx;

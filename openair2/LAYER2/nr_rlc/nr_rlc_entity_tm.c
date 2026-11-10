@@ -73,7 +73,7 @@ static int generate_tx_pdu(nr_rlc_entity_tm_t *entity, char *buffer, int size)
   /* update buffer status */
   entity->common.bstatus.tx_size -= sdu->size;
 
-  nr_rlc_free_sdu_segment(sdu);
+  nr_rlc_free_sdu_segment(entity->common.sdu_pools, sdu);
 
   return ret;
 }
@@ -127,7 +127,8 @@ void nr_rlc_entity_tm_recv_sdu(nr_rlc_entity_t *_entity,
     entity->t_log_buffer_full = entity->t_current;
   }
 
-  if (entity->tx_size + size > entity->tx_maxsize) {
+  sdu = entity->tx_size + size <= entity->tx_maxsize ? nr_rlc_new_sdu(entity->common.sdu_pools, buffer, size, sdu_id) : NULL;
+  if (sdu == NULL) {
     entity->sdu_rejected++;
 
     entity->common.stats.rxsdu_dd_pkts++;
@@ -137,8 +138,6 @@ void nr_rlc_entity_tm_recv_sdu(nr_rlc_entity_t *_entity,
   }
 
   entity->tx_size += size;
-
-  sdu = nr_rlc_new_sdu(buffer, size, sdu_id);
 
   nr_rlc_sdu_segment_list_append(&entity->tx_list, &entity->tx_end, sdu);
 
@@ -177,7 +176,7 @@ static void clear_entity(nr_rlc_entity_tm_t *entity)
   entity->t_log_buffer_full = 0;
   entity->sdu_rejected      = 0;
 
-  nr_rlc_free_sdu_segment_list(entity->tx_list);
+  nr_rlc_free_sdu_segment_list(entity->common.sdu_pools, entity->tx_list);
 
   entity->tx_list         = NULL;
   entity->tx_end          = NULL;
@@ -196,6 +195,7 @@ void nr_rlc_entity_tm_delete(nr_rlc_entity_t *_entity)
 {
   nr_rlc_entity_tm_t *entity = (nr_rlc_entity_tm_t *)_entity;
   clear_entity(entity);
+  nr_rlc_delete_sdu_pools(entity->common.sdu_pools);
   time_average_free(entity->common.txsdu_avg_time_to_tx);
   free(entity);
 }
