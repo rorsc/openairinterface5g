@@ -21,7 +21,7 @@ void simple(void)
   }
   ptrdiff_t diff = data[1] - data[0];
   assert(diff == size);
-  
+
   void *nomem = mp_alloc(&mp);
   assert(nomem == NULL);
 
@@ -31,8 +31,43 @@ void simple(void)
   mp_destroy(&mp);
 }
 
+/* block sizes are rounded up to a power of two; freed blocks are reused */
+void rounding_reuse(void)
+{
+  size_t n = 4;
+  mempool_t mp;
+  mp_init(&mp, 1580, n);
+  void *data[n];
+  assert(mp_multi_alloc(&mp, n, data) == n);
+  assert(mp_alloc(&mp) == NULL);
+  for (size_t i = 1; i < n; ++i)
+    assert((char *)data[i] - (char *)data[i - 1] == 2048);
+  mp_free(&mp, data[1]);
+  assert(mp_alloc(&mp) == data[1]);
+  assert(mp_alloc(&mp) == NULL);
+  mp_multi_free(&mp, n, data);
+  assert(mp_multi_alloc(&mp, n, data) == n);
+  mp_multi_free(&mp, n, data);
+  mp_destroy(&mp);
+}
+
+/* a large pool is cheap as long as it is not used (would take long if
+ * mp_init() touched all 1 GiB) */
+void large_unused(void)
+{
+  mempool_t mp;
+  for (int i = 0; i < 10; ++i) {
+    mp_init(&mp, 2048, 1 << 19);
+    void *b = mp_alloc(&mp);
+    assert(b);
+    mp_free(&mp, b);
+    mp_destroy(&mp);
+  }
+}
 
 int main(void)
 {
   simple();
+  rounding_reuse();
+  large_unused();
 }
