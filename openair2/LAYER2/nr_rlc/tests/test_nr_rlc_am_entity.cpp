@@ -206,6 +206,70 @@ TEST(nr_rlc_am_entity, test_ack_out_of_order)
   rx_entity->delete_entity(rx_entity);
 }
 
+static void count_sdu(void *data, nr_rlc_entity_t *entity, char *buf, int size)
+{
+  UNUSED(entity);
+  UNUSED(buf);
+  UNUSED(size);
+  (*(int *)data)++;
+}
+
+static void count_ack(void *data, nr_rlc_entity_t *entity, int sdu_id)
+{
+  UNUSED(entity);
+  UNUSED(sdu_id);
+  (*(int *)data)++;
+}
+
+/* move all PDUs from tx to rx and the STATUS PDUs back */
+static void transfer_all(nr_rlc_entity_t *tx, nr_rlc_entity_t *rx, uint64_t *time)
+{
+  char pdu[2000];
+  int size;
+  while ((size = tx->generate_pdu(tx, pdu, sizeof(pdu))) > 0)
+    rx->recv_pdu(rx, pdu, size);
+  *time += 100;
+  rx->set_time(rx, *time);
+  tx->set_time(tx, *time);
+  while ((size = rx->generate_pdu(rx, pdu, sizeof(pdu))) > 0)
+    tx->recv_pdu(tx, pdu, size);
+}
+
+/* when the SDU memory of an entity is full, further SDUs are dropped (no
+ * assertion), and taken again once SDUs are acknowledged */
+TEST(nr_rlc_am_entity, test_sdu_memory_full)
+{
+  int delivered = 0, acked = 0;
+  nr_rlc_entity_t *e[2];
+  for (int i = 0; i < 2; i++)
+    e[i] = new_nr_rlc_entity_am(1 << 28, 1 << 28, count_sdu, &delivered, count_ack, &acked, max_retx_reached, NULL,
+                                45, 35, 0, -1, -1, 8, 18);
+  nr_rlc_entity_t *tx = e[0], *rx = e[1];
+  char sdu[1400] = {0};
+  const int n = 20000;
+  for (int i = 0; i < n; i++)
+    tx->recv_sdu(tx, sdu, 10, i);
+  nr_rlc_statistics_t stats;
+  tx->get_stats(tx, &stats);
+  const int dropped = stats.txpdu_dd_pkts;
+  EXPECT_GT(dropped, 0) << "expected SDUs to be dropped when the SDU memory is full";
+
+  uint64_t time = 0;
+  transfer_all(tx, rx, &time);
+  EXPECT_EQ(delivered, n - dropped);
+  EXPECT_EQ(acked, n - dropped);
+
+  tx->recv_sdu(tx, sdu, 10, n);
+  tx->recv_sdu(tx, sdu, sizeof(sdu), n + 1);
+  tx->get_stats(tx, &stats);
+  EXPECT_EQ(stats.txpdu_dd_pkts, dropped) << "expected SDUs to be taken again";
+  transfer_all(tx, rx, &time);
+  EXPECT_EQ(acked, n - dropped + 2);
+
+  tx->delete_entity(tx);
+  rx->delete_entity(rx);
+}
+
 int main(int argc, char **argv)
 {
   logInit();
