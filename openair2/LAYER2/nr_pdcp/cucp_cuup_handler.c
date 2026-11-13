@@ -151,7 +151,7 @@ static UP_TL_information_t f1_drb_gtpu_create(const instance_t f1inst,
   LOG_I(GTPU, "Incoming DRB %d / PDU Session %d - UL TEID %d\n", req->incoming_rb_id, req->pdusession_id, req->outgoing_teid);
 
   gtpv1u_gnb_create_tunnel_resp_t resp = {0};
-  int ret = gtpv1u_create_ngu_tunnel(f1inst, req, &resp, cu_f1u_data_req, NULL, NULL, nr_up_f1u_ddds_indication);
+  int ret = gtpv1u_create_ngu_tunnel(f1inst, req, &resp, nr_up_f1u_ul_user_data_recv, NULL, NULL, nr_up_f1u_ddds_indication);
   AssertFatal(ret >= 0, "Unable to create GTP-U tunnel for F1-U\n");
   AssertFatal(resp.gnb_addr.length == sizeof(in_addr_t),
               "GTP tunnel response address length %d does not match IPv4 size %zu\n",

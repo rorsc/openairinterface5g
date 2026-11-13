@@ -9,6 +9,7 @@
 #include "assertions.h"
 #include "common/utils/LOG/log.h"
 #include "openair2/F1AP/f1ap_common.h"
+#include "openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 #include "nr_up.h"
 
 /** @brief Send a DL DRB PDU on F1-U via GTP-U with NR-U sequence number */
@@ -34,6 +35,30 @@ void nr_up_f1u_ddds_indication(ue_id_t ue_id, rb_id_t drb_id, uint32_t dbs)
   DevAssert(iface);
   DevAssert(iface->up_ddds_indication);
   iface->up_ddds_indication(ue_id, drb_id, dbs);
+}
+
+/** @brief F1-U UL USER DATA RX on CU: sync PDCP on the GTP buffer */
+bool nr_up_f1u_ul_user_data_recv(protocol_ctxt_t *ctxt_pP,
+                                 const srb_flag_t srb_flagP,
+                                 const rb_id_t rb_idP,
+                                 const mui_t muiP,
+                                 const confirm_t confirmP,
+                                 const sdu_size_t sdu_buffer_sizeP,
+                                 unsigned char *const sdu_buffer_pP,
+                                 const pdcp_transmission_mode_t modeP,
+                                 const uint32_t *sourceL2Id,
+                                 const uint32_t *destinationL2Id,
+                                 bool is_poll)
+{
+  UNUSED(muiP);
+  UNUSED(confirmP);
+  UNUSED(modeP);
+  UNUSED(sourceL2Id);
+  UNUSED(destinationL2Id);
+  UNUSED(is_poll);
+
+  do_pdcp_data_ind(ctxt_pP, srb_flagP, rb_idP, sdu_buffer_sizeP, sdu_buffer_pP);
+  return true;
 }
 
 /** @brief Binds the F1-U nr-up backend on iface (CU side) */
