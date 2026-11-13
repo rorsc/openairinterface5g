@@ -179,17 +179,14 @@ static void test_ddds_indication(ue_id_t ue_id, rb_id_t drb_id, uint32_t dbs)
   nr_up_f1u_ddds_indication(ue_id, drb_id, dbs);
 }
 
-/* DRB never synced: first precheck ALLOWs with Report Polling, then a second
- * precheck ALLOWs without RP once the poll window is armed. */
-TEST(nrup, flow_control_allow_rp_never_synced)
+/* Never synced: precheck ALLOWs */
+TEST(nrup, flow_control_allow_never_synced)
 {
   const ue_id_t ue_id = 1;
   const uint8_t drb_id = 1;
   setup_local_drb(ue_id, drb_id);
-  tick_ms(20);
 
   nr_up_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
-  EXPECT_EQ(nr_up_flow_control_precheck(&req), NR_UP_FLOW_ALLOW_RP);
   EXPECT_EQ(nr_up_flow_control_precheck(&req), NR_UP_FLOW_ALLOW);
 
   nr_up_release_drb(ue_id, drb_id);
@@ -257,8 +254,7 @@ TEST(nrup, ddds_precheck_poll_and_zero)
   EXPECT_TRUE(nr_up_ddds_precheck(&st, 600, false));
 }
 
-/* CU deliver_pdu_drb sends the G-PDU on F1-U with Report Polling set; the
- * DU-side GTP callback must receive the PDU and see is_poll. */
+/* CU sets Report Polling after the poll timer, DU must receive the PDU with is_poll. */
 TEST(nrup, f1_dl_deliver)
 {
   const uint32_t ue_id = 21;
@@ -268,6 +264,7 @@ TEST(nrup, f1_dl_deliver)
   f1_gtp_pair gtp = setup_f1_gtp(ue_id, drb_id, 4568);
   nr_up_add_drb(ue_id, drb_id);
   nr_up_sync_dbs(ue_id, drb_id, 65535);
+  tick_ms(20);
 
   nr_up_user_data_req_t req = {
       .ue_id = ue_id,
@@ -275,7 +272,6 @@ TEST(nrup, f1_dl_deliver)
       .pdcp_sn = 7,
       .pdu_max_size = sizeof(pdu),
       .pdu = {.len = sizeof(pdu), .buf = pdu},
-      .report_polling = true,
   };
   nr_up_deliver_pdu_drb(&req);
 
@@ -286,8 +282,7 @@ TEST(nrup, f1_dl_deliver)
   teardown_f1_gtp(&gtp);
 }
 
-/* CU TX (gtpv1uSendDirectWithNRUSeqNum) does not set Report Delivered yet, so this test
- * injects GTP-U + NR-UP DL USER DATA with that IE. The receiver then sends DL DATA DELIVERY STATUS. */
+/* DL F1, then peer replies with DDDS and CU acknowledges it */
 TEST(nrup, f1_ddds_on_report_polling)
 {
   const uint32_t ue_id = 20;
@@ -299,13 +294,13 @@ TEST(nrup, f1_ddds_on_report_polling)
   g_f1 = &gtp;
   nr_up_add_drb(ue_id, drb_id);
   nr_up_sync_dbs(ue_id, drb_id, 65535);
+  tick_ms(20);
 
   nr_up_user_data_req_t req = {
       .ue_id = ue_id,
       .drb_id = drb_id,
       .pdu_max_size = sizeof(pdu),
       .pdu = {.len = sizeof(pdu), .buf = pdu},
-      .report_polling = true,
   };
   nr_up_deliver_pdu_drb(&req);
 

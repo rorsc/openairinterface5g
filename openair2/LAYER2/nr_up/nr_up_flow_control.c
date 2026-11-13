@@ -34,12 +34,11 @@ void nr_up_flow_control_log_drop(void)
 }
 
 /** @brief Flow control precheck on pdu_max_size against available per-DRB TX budget.
- * On DROP, if DBS is stale, refresh it by sending user data with report polling only. */
+ * On DROP, offer a poll-only empty user_data so a stale DBS can refresh. */
 nr_up_flow_control_action_t nr_up_flow_control_precheck(const nr_up_user_data_req_t *req)
 {
   DevAssert(req);
   nr_up_dbs_t dbs = nr_up_manager_get_dbs(req->ue_id, req->drb_id);
-  const bool rp = nr_up_report_polling(req->ue_id, req->drb_id);
   const uint64_t available = dbs.available_dbs;
   const uint64_t desired = dbs.desired_buffer_size;
 
@@ -51,17 +50,14 @@ nr_up_flow_control_action_t nr_up_flow_control_precheck(const nr_up_user_data_re
   if (dbs.last_dbs_sync == NR_UP_DBS_NEVER_SYNCED
       || (dbs.desired_buffer_size != 0 && req->pdu_max_size <= dbs.available_dbs
           && available * 100u > (100u - NR_UP_SOFT_DROP_THRESHOLD) * desired)) {
-    return rp ? NR_UP_FLOW_ALLOW_RP : NR_UP_FLOW_ALLOW;
+    return NR_UP_FLOW_ALLOW;
   }
 
   /* DROP: RLC reported DBS 0, PDU does not fit, or soft-dropped */
   nr_up_flow_control_log_drop();
 
-  if (rp) {
-    nr_up_user_data_req_t poll = *req;
-    poll.report_polling = true; /* pdu empty: poll-only refresh */
-    nr_up_user_data(&poll);
-  }
+  nr_up_user_data_req_t poll = *req;
+  nr_up_user_data(&poll);
   return NR_UP_FLOW_DROP;
 }
 

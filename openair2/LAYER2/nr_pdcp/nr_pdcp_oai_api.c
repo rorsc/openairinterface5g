@@ -885,10 +885,8 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
       .pdu_max_size = max_size,
   };
 
-  /* Flow control precheck before delivering the PDU (before PDCP SN is set).
-   * On DROP, nr_up_flow_control_precheck may send a poll-only DBS refresh. */
-  nr_up_flow_control_action_t action = nr_up_flow_control_precheck(&req);
-  if (action == NR_UP_FLOW_DROP) {
+  /* Flow control precheck before PDCP SN. On DROP, precheck may send a poll-only DBS refresh. */
+  if (nr_up_flow_control_precheck(&req) == NR_UP_FLOW_DROP) {
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return 0;
   }
@@ -904,7 +902,6 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
 
   req.pdu.buf = (uint8_t *)pdu_buf;
   req.pdu.len = pdu_size;
-  req.report_polling = action == NR_UP_FLOW_ALLOW_RP;
   nr_up_deliver_pdu_drb(&req);
   return 1;
 }

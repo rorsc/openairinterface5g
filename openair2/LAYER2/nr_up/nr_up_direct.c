@@ -43,8 +43,6 @@ static void nr_up_direct_dl_user_data(const nr_up_user_data_req_t *req)
 
   LOG_D(NR_UP, "%s(): (drb %u) calling rlc_data_req size %d\n", __func__, req->drb_id, len);
   nr_rlc_enqueue_data_req(&ctxt, SRB_FLAG_NO, req->drb_id, req->sdu_id, len, memblock, req->ue_id, req->report_polling);
-  if (req->pdu.buf != NULL && len > 0)
-    nr_up_consume_dbs(req->ue_id, req->drb_id, len);
 }
 
 /** @brief Local DDDS analogue: apply Desired Buffer Size into the CU budget.

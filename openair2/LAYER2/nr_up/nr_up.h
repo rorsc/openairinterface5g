@@ -27,7 +27,6 @@ typedef struct nr_up_dl_user_data_req_s {
 
 typedef enum nr_up_flow_control_action_e {
   NR_UP_FLOW_ALLOW,
-  NR_UP_FLOW_ALLOW_RP,
   NR_UP_FLOW_DROP,
 } nr_up_flow_control_action_t;
 

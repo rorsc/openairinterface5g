@@ -25,7 +25,6 @@ static void nr_up_f1u_dl_user_data(const nr_up_user_data_req_t *req)
         req->report_polling,
         req->pdcp_sn);
   gtpv1uSendDirectWithNRUSeqNum(inst->gtpInst, req->ue_id, req->drb_id, req->pdu.buf, req->pdu.len, req->report_polling, req->pdcp_sn);
-  nr_up_consume_dbs(req->ue_id, req->drb_id, req->pdu.len);
 }
 
 /** @brief GTP DDDS RX adapter: apply Desired Buffer Size into the CU budget */
