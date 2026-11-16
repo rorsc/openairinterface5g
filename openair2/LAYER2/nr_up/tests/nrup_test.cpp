@@ -23,6 +23,20 @@ softmodem_params_t *get_softmodem_params(void)
   abort();
   return NULL;
 }
+
+void do_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
+                      const srb_flag_t srb_flagP,
+                      const rb_id_t rb_id,
+                      const sdu_size_t sdu_buffer_size,
+                      uint8_t *const sdu_buffer)
+{
+  UNUSED(ctxt_pP);
+  UNUSED(srb_flagP);
+  UNUSED(rb_id);
+  UNUSED(sdu_buffer_size);
+  UNUSED(sdu_buffer);
+  abort();
+}
 }
 
 static instance_t init_gtp(const char *ip, uint16_t port)
