@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
-#include "nr_up_ddds_policy.h"
+#include "nr_up_ddds.h"
 
 #include "assertions.h"
 

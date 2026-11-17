@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: LicenseRef-CSSL-1.0
 
-add_library(nr_up STATIC nr_up.c nr_up_ddds_policy.c)
+add_library(nr_up STATIC nr_up.c nr_up_ddds.c)
 target_link_libraries(nr_up PRIVATE ds log_headers)
 
 # Compat alias: former separate policy lib now lives in nr_up
-add_library(nr_up_ddds_policy INTERFACE)
-target_link_libraries(nr_up_ddds_policy INTERFACE nr_up)
+add_library(nr_up_ddds INTERFACE)
+target_link_libraries(nr_up_ddds INTERFACE nr_up)
 
 add_library(nr_up_pdcp_if STATIC nr_up_dl_user_data.c)
 target_link_libraries(nr_up_pdcp_if PUBLIC nr_up PRIVATE ds log_headers)

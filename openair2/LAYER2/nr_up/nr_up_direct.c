@@ -9,7 +9,7 @@
 #include "openair2/LAYER2/nr_rlc/nr_rlc_data_req_queue.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "nr_up.h"
-#include "nr_up_ddds_policy.h"
+#include "nr_up_ddds.h"
 #include "nr_up_dl_user_data.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/utils.h"

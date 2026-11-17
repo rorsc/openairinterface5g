@@ -14,7 +14,7 @@
 
 extern "C" {
 #include "openair2/F1AP/f1ap_common.h"
-#include "openair2/LAYER2/nr_up/nr_up_ddds_policy.h"
+#include "openair2/LAYER2/nr_up/nr_up_ddds.h"
 #include "openair2/LAYER2/nr_up/nr_up_f1u.h"
 #include "openair2/LAYER2/nr_up/nr_up_dl_user_data.h"
 

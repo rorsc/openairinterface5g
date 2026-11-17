@@ -13,7 +13,7 @@
 #include "common/utils/LOG/log.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "openair2/LAYER2/nr_up/nr_up.h"
-#include "openair2/LAYER2/nr_up/nr_up_ddds_policy.h"
+#include "openair2/LAYER2/nr_up/nr_up_ddds.h"
 
 /* NR PDCP and RLC both use "big locks". In some cases a thread may do
  * lock(rlc) followed by lock(pdcp) (typically when running 'rx_sdu').

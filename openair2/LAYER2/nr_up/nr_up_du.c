@@ -13,7 +13,7 @@
 #include "common/utils/utils.h"
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
-#include "nr_up_ddds_policy.h"
+#include "nr_up_ddds.h"
 
 static nr_up_if_t *g_nr_up_du_iface;
 
