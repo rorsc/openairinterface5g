@@ -24,6 +24,7 @@ static void nr_up_f1u_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_
   uint32_t space = 0;
   if (tx_space > 0)
     space = tx_space;
+  // TODO also too frequent
   nr_up_ddds_t ddds = nr_up_get_ddds(rlc_ue_id, drb_id);
   const bool report = nr_up_ddds_precheck(&ddds, space, false);
   if (report)
@@ -101,6 +102,7 @@ bool nr_up_f1u_dl_user_data_recv(protocol_ctxt_t *ctxt_pP,
   const int dbs = nr_rlc_data_req(ctxt_pP, srb_flagP, rb_idP, muiP, sdu_buffer_sizeP, sdu);
   const uint32_t space = dbs >= 0 ? (uint32_t)dbs : 0;
 
+  // TODO here second DDDS => should be one common code
   nr_up_ddds_t ddds = nr_up_get_ddds(ue_id, rb_idP);
   if (nr_up_ddds_precheck(&ddds, space, is_poll)) {
     nr_up_set_ddds(ue_id, rb_idP, ddds);

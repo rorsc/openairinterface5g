@@ -83,6 +83,7 @@ static void *nr_rlc_data_req_queue_thread(void *_)
     if (item->report_polling && !item->srb_flagP && desired_buffer_size >= 0) {
       const uint32_t space = desired_buffer_size;
       nr_up_ddds_t ddds = nr_up_get_ddds(item->pdcp_ue_id, item->rb_idP);
+      // TODO does also f1 case end here?
       if (nr_up_ddds_precheck(&ddds, space, true)) {
         nr_up_set_ddds(item->pdcp_ue_id, item->rb_idP, ddds);
         nr_up_if_t *iface = get_nr_up_if();

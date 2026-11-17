@@ -70,6 +70,7 @@ static void nr_up_direct_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, 
   uint32_t space = 0;
   if (tx_space > 0)
     space = tx_space;
+  // TODO duplication
   nr_up_ddds_t ddds = nr_up_get_ddds(pdcp_ue_id, drb_id);
   if (nr_up_ddds_precheck(&ddds, space, false)) {
     nr_up_set_ddds(pdcp_ue_id, drb_id, ddds);
