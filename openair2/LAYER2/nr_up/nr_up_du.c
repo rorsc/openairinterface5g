@@ -93,8 +93,8 @@ bool nr_up_f1u_dl_user_data_recv(protocol_ctxt_t *ctxt_pP,
     /* Buffer comes from GTP-U thread: copy before RLC enqueue */
     sdu = malloc16(sdu_buffer_sizeP);
     memcpy(sdu, sdu_buffer_pP, sdu_buffer_sizeP);
-  } else {
-    DevAssert(is_poll);
+  } else if (!is_poll) {
+    return true; // we received bogus packet without data nor poll
   }
 
   /* PDU: enqueue. NULL/0: DBS refresh only (same as mono RLC queue). */
