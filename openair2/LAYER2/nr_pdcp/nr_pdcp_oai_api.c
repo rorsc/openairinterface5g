@@ -886,6 +886,7 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
   };
 
   /* Flow control precheck before PDCP SN. On DROP, precheck may send a poll-only DBS refresh. */
+  // wrong data type??
   if (nr_up_flow_control_precheck(&req) == NR_UP_FLOW_DROP) {
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return 0;
