@@ -146,7 +146,7 @@ static UP_TL_information_t f1_drb_gtpu_create(const instance_t f1inst,
 {
   UP_TL_information_t out = {0};
 
-  nr_up_add_drb(req->ue_id, req->incoming_rb_id);
+  nr_up_add_ue(req->ue_id);
 
   LOG_I(GTPU, "Incoming DRB %d / PDU Session %d - UL TEID %d\n", req->incoming_rb_id, req->pdusession_id, req->outgoing_teid);
 

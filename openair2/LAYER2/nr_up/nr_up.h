@@ -81,14 +81,18 @@ typedef struct nr_up_desired_buffer_s {
   nr_up_ddds_t ddds_report;
 } nr_up_desired_buffer_t;
 
+typedef struct nr_up_ue_state {
+  nr_up_desired_buffer_t drb[32];
+} nr_up_ue_state_t;
+
 struct nr_up_if_s *get_nr_up_if(void);
 
 void nr_up_ms_tick(void);
 uint64_t nr_up_current_time_ms(void);
 
 void nr_up_manager_init(void);
-void nr_up_add_drb(ue_id_t ue_id, rb_id_t drb_id);
-void nr_up_release_drb(ue_id_t ue_id, rb_id_t drb_id);
+void nr_up_add_ue(ue_id_t ue_id);
+void nr_up_release_ue(ue_id_t ue_id);
 nr_up_dbs_t nr_up_manager_get_dbs(ue_id_t ue_id, rb_id_t drb_id);
 void nr_up_update_ue_id(ue_id_t old_ue_id, ue_id_t new_ue_id);
 nr_up_ddds_t nr_up_get_ddds(ue_id_t ue_id, rb_id_t drb_id);

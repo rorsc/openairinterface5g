@@ -163,7 +163,7 @@ void nrdc_ue_context_modification_request(const f1ap_ue_context_mod_req_t *req)
   nr_mac_remove_lcid(&UE->UE_sched_ctrl, lcid);
   nr_rlc_release_entity(UE->rnti, lcid);
   newGtpuDeleteOneTunnel(f1inst, UE->rnti, drb_id);
-  nr_up_release_drb(UE->rnti, drb_id);
+  //nr_up_release_drb(UE->rnti, drb_id); TODO
 
   /* remove the RLC from UE->CellGroup->rlc_BearerToAddModList */
   NR_CellGroupConfig_t *cellGroupConfig = UE->CellGroup;

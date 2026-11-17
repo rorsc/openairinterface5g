@@ -70,10 +70,10 @@ static void tick_ms(int n)
     nr_up_ms_tick();
 }
 
-static void setup_local_drb(ue_id_t ue_id, uint8_t drb_id)
+static void setup_local_ue(ue_id_t ue_id)
 {
   nr_up_init_cu(get_nr_up_if());
-  nr_up_add_drb(ue_id, drb_id);
+  nr_up_add_ue(ue_id);
 }
 
 struct f1_gtp_pair {
@@ -198,12 +198,12 @@ TEST(nrup, flow_control_allow_never_synced)
 {
   const ue_id_t ue_id = 1;
   const uint8_t drb_id = 1;
-  setup_local_drb(ue_id, drb_id);
+  setup_local_ue(ue_id);
 
   nr_up_dl_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
   EXPECT_EQ(nr_up_flow_control_precheck(&req), NR_UP_FLOW_ALLOW);
 
-  nr_up_release_drb(ue_id, drb_id);
+  nr_up_release_ue(ue_id);
 }
 
 /* Synced Desired Buffer Size is 0: precheck DROPs and nr_up_f1u still sends
@@ -214,7 +214,7 @@ TEST(nrup, flow_control_drop_poll)
   const uint8_t drb_id = 1;
   g_rx = {.ue_id = ue_id, .drb_id = drb_id, .size = 0};
   f1_gtp_pair gtp = setup_f1_gtp(ue_id, drb_id, 4569);
-  nr_up_add_drb(ue_id, drb_id);
+  nr_up_add_ue(ue_id);
   nr_up_sync_dbs(ue_id, drb_id, 0);
   tick_ms(20);
 
@@ -223,7 +223,7 @@ TEST(nrup, flow_control_drop_poll)
   usleep(100 * 1000);
   EXPECT_EQ(g_rx.count, 1);
 
-  nr_up_release_drb(ue_id, drb_id);
+  nr_up_release_ue(ue_id);
   teardown_f1_gtp(&gtp);
 }
 
@@ -235,13 +235,13 @@ TEST(nrup, flow_control_allow_synced)
   const uint32_t dbs_values[] = {10000, 50000000};
   for (size_t i = 0; i < sizeof(dbs_values) / sizeof(dbs_values[0]); i++) {
     const ue_id_t ue_id = 3 + i;
-    setup_local_drb(ue_id, drb_id);
+    setup_local_ue(ue_id);
     nr_up_sync_dbs(ue_id, drb_id, dbs_values[i]);
 
     nr_up_dl_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
     EXPECT_EQ(nr_up_flow_control_precheck(&req), NR_UP_FLOW_ALLOW) << "dbs=" << dbs_values[i];
 
-    nr_up_release_drb(ue_id, drb_id);
+    nr_up_release_ue(ue_id);
   }
 }
 
@@ -276,7 +276,7 @@ TEST(nrup, f1_dl_deliver)
   uint8_t pdu[3] = {0x11, 0x22, 0x33};
   g_rx = {.ue_id = ue_id, .drb_id = drb_id, .size = 3, .pdu = pdu};
   f1_gtp_pair gtp = setup_f1_gtp(ue_id, drb_id, 4568);
-  nr_up_add_drb(ue_id, drb_id);
+  nr_up_add_ue(ue_id);
   nr_up_sync_dbs(ue_id, drb_id, 65535);
   tick_ms(20);
 
@@ -292,7 +292,7 @@ TEST(nrup, f1_dl_deliver)
   usleep(100 * 1000);
   EXPECT_EQ(g_rx.count, 1);
 
-  nr_up_release_drb(ue_id, drb_id);
+  nr_up_release_ue(ue_id);
   teardown_f1_gtp(&gtp);
 }
 
@@ -306,7 +306,7 @@ TEST(nrup, f1_ddds_on_report_polling)
   g_ddds_ind_count = 0;
   f1_gtp_pair gtp = setup_f1_gtp(ue_id, drb_id, 4570, test_ddds_indication);
   g_f1 = &gtp;
-  nr_up_add_drb(ue_id, drb_id);
+  nr_up_add_ue(ue_id);
   nr_up_sync_dbs(ue_id, drb_id, 65535);
   tick_ms(20);
 
@@ -322,7 +322,7 @@ TEST(nrup, f1_ddds_on_report_polling)
   EXPECT_EQ(g_rx.count, 1);
   EXPECT_EQ(g_ddds_ind_count, 1);
 
-  nr_up_release_drb(ue_id, drb_id);
+  nr_up_release_ue(ue_id);
   g_f1 = NULL;
   teardown_f1_gtp(&gtp);
 }

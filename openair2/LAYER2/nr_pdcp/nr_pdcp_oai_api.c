@@ -491,7 +491,7 @@ void nr_pdcp_add_drb(int is_gnb,
     LOG_I(PDCP, "Added DRB %d to UE ID %ld\n", sdap->drb_id, UEid);
   }
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
-  nr_up_add_drb(UEid, sdap->drb_id);
+  nr_up_add_ue(UEid); // necessary?
 }
 
 void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, const nr_pdcp_entity_security_keys_and_algos_t *security_parameters)
@@ -600,9 +600,7 @@ uint64_t get_pdcp_optmask(void)
 
 void nr_pdcp_remove_UE(ue_id_t ue_id)
 {
-  for (rb_id_t drb_id = 1; drb_id <= MAX_DRBS_PER_UE; drb_id++) {
-    nr_up_release_drb(ue_id, drb_id);
-  }
+  nr_up_release_ue(ue_id);
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
   nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
@@ -810,7 +808,7 @@ void nr_pdcp_release_drb(ue_id_t ue_id, int drb_id)
   else
     LOG_E(PDCP, "Attempting to release DRB%d but it is not configured\n", drb_id);
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
-  nr_up_release_drb(ue_id, drb_id);
+  //nr_up_release_drb(ue_id, drb_id); TODO
 }
 
 void nr_pdcp_reestablishment(ue_id_t ue_id,

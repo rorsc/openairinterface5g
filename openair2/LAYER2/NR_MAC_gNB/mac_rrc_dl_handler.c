@@ -47,15 +47,14 @@ static instance_t get_f1_gtp_instance(void)
 static void nr_mac_du_delete_f1u_tunnel(instance_t f1inst, ue_id_t ue_id, rb_id_t rb_id)
 {
   newGtpuDeleteOneTunnel(f1inst, ue_id, rb_id);
-  nr_up_release_drb(ue_id, rb_id);
+  //nr_up_release_drb(ue_id, rb_id); TODO
 }
 
 /** @brief Delete all F1-U tunnels for a UE and drop DDDS entries */
 static void nr_mac_du_delete_all_f1u_tunnels(instance_t f1inst, ue_id_t ue_id)
 {
   newGtpuDeleteAllTunnels(f1inst, ue_id);
-  for (rb_id_t drb_id = 1; drb_id <= MAX_DRBS_PER_UE; drb_id++)
-  nr_up_release_drb(ue_id, drb_id);
+  nr_up_release_ue(ue_id);
 }
 
 /** @brief Fill and send request to create GTP-U tunnel on F1 */
@@ -64,7 +63,7 @@ static f1ap_up_tnl_t f1_drb_gtpu_create(const gtpv1u_gnb_create_tunnel_req_t *re
   f1ap_up_tnl_t out = {0};
 
   nr_up_init_du(get_nr_up_if());
-  nr_up_add_drb(req->ue_id, req->incoming_rb_id);
+  nr_up_add_ue(req->ue_id);
 
   LOG_I(GTPU, "Incoming DRB %d / PDU Session %d - UL TEID %d\n", req->incoming_rb_id, req->pdusession_id, req->outgoing_teid);
 
