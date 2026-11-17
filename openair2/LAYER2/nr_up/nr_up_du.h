@@ -13,8 +13,6 @@
 
 void nr_up_init_du(nr_up_if_t *iface);
 
-void nr_up_f1u_ddds(const nr_up_ddds_req_t *req);
-void nr_up_f1u_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_id_t drb_id, uint8_t *buf, size_t len, int tx_space);
 bool nr_up_f1u_dl_user_data_recv(protocol_ctxt_t *ctxt_pP,
                                  const srb_flag_t srb_flagP,
                                  const rb_id_t rb_idP,

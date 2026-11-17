@@ -62,7 +62,7 @@ static void nr_up_direct_ddds(const nr_up_ddds_req_t *req)
  * @param rlc_ue_id  RLC/MAC UE id
  * @param tx_space   RLC TX space, read by the caller under the RLC lock
  */
-void nr_up_direct_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_id_t drb_id, uint8_t *buf, size_t len, int tx_space)
+static void nr_up_direct_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_id_t drb_id, uint8_t *buf, size_t len, int tx_space)
 {
   UNUSED(rlc_ue_id);
   DevAssert(ctxt != NULL);

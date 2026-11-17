@@ -18,7 +18,7 @@
 static nr_up_if_t *g_nr_up_du_iface;
 
 /** @brief F1-U UL: send G-PDU, piggyback DDDS when policy requires (TS 38.425 clause 5.4.2.1) */
-void nr_up_f1u_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_id_t drb_id, uint8_t *buf, size_t len, int tx_space)
+static void nr_up_f1u_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_id_t drb_id, uint8_t *buf, size_t len, int tx_space)
 {
   UNUSED(ctxt);
   uint32_t space = 0;
@@ -40,7 +40,7 @@ void nr_up_f1u_ul_user_data(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_id_t dr
 }
 
 /** @brief F1-U TX: G-PDU and/or DDDS (piggyback, TS 38.425 clause 5.4.2.1) */
-void nr_up_f1u_ddds(const nr_up_ddds_req_t *req)
+static void nr_up_f1u_ddds(const nr_up_ddds_req_t *req)
 {
   DevAssert(req);
   const f1ap_cudu_inst_t *inst = getCxt(0);

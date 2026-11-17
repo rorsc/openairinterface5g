@@ -14,7 +14,7 @@
 #define NR_UP_DROP_LOG_INTERVAL_MS 1000u
 
 /** @brief Rate-limited log a drop */
-void nr_up_flow_control_log_drop(void)
+static void nr_up_flow_control_log_drop(void)
 {
   static uint32_t drops_pending;
   static uint64_t last_log_ms;
