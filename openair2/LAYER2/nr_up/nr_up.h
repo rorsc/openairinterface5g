@@ -50,7 +50,9 @@ typedef struct nr_up_if_s {
   /** DU: request DDDS TX toward the CU */
   nr_up_send_ddds_fn_t up_send_ddds;
   /** RLC UL DRB delivery (backend set at init) */
-  nr_up_ul_user_data_fn_t ul_user_data;
+  nr_up_ul_user_data_fn_t ul_user_data; // inconsistent: ul_user_data directly
+                                        // calld in RLC, but up_user_data is
+                                        // not
 } nr_up_if_t;
 
 /** Last DDDS reported toward the peer (mono sync or F1 DU TX). */
