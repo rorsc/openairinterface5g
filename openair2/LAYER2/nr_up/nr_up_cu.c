@@ -31,10 +31,7 @@ static void nr_up_f1u_dl_user_data(const nr_up_dl_user_data_req_t *req)
 /** @brief GTP DDDS RX adapter: apply Desired Buffer Size into the CU budget */
 void nr_up_f1u_ddds_indication(ue_id_t ue_id, rb_id_t drb_id, uint32_t dbs)
 {
-  nr_up_if_t *iface = get_nr_up_if();
-  DevAssert(iface);
-  DevAssert(iface->up_ddds_indication);
-  iface->up_ddds_indication(ue_id, drb_id, dbs);
+  nr_up_sync_dbs(ue_id, drb_id, dbs);
 }
 
 /** @brief F1-U UL USER DATA RX on CU: sync PDCP on the GTP buffer */
@@ -67,5 +64,4 @@ void nr_up_init_cu(nr_up_if_t *iface)
   DevAssert(iface);
   nr_up_manager_init();
   iface->up_dl_user_data = nr_up_f1u_dl_user_data;
-  iface->up_ddds_indication = nr_up_sync_dbs;
 }

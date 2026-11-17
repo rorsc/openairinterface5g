@@ -47,8 +47,6 @@ typedef void (*nr_up_ul_user_data_fn_t)(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id
 
 typedef struct nr_up_if_s {
   nr_up_dl_user_data_fn_t up_dl_user_data;
-  /** CU: apply remote Desired Buffer Size into the local budget */
-  nr_up_ddds_fn_t up_ddds_indication;
   /** DU: request DDDS TX toward the CU */
   nr_up_send_ddds_fn_t up_send_ddds;
   /** RLC UL DRB delivery (backend set at init) */

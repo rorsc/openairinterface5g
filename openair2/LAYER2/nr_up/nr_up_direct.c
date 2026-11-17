@@ -52,9 +52,7 @@ static void nr_up_direct_ddds(const nr_up_ddds_req_t *req)
   DevAssert(req);
   if (!req->report_ddds)
     return;
-  nr_up_if_t *iface = get_nr_up_if();
-  DevAssert(iface != NULL && iface->up_ddds_indication != NULL);
-  iface->up_ddds_indication(req->ue_id, req->drb_id, req->desired_buffer_size);
+  nr_up_sync_dbs(req->ue_id, req->drb_id, req->desired_buffer_size);
 }
 
 /** @brief Mono/UE UL DRB: maybe sync DBS, then deliver SDU to PDCP.
@@ -98,7 +96,6 @@ void nr_up_init_direct(nr_up_if_t *iface)
   DevAssert(iface);
   nr_up_manager_init();
   iface->up_dl_user_data = nr_up_direct_dl_user_data;
-  iface->up_ddds_indication = nr_up_sync_dbs;
   iface->up_send_ddds = nr_up_direct_ddds;
   iface->ul_user_data = nr_up_direct_ul_user_data;
 }
