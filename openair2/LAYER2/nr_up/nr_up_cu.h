@@ -7,7 +7,7 @@
 
 #include "nr_up.h"
 
-void nr_up_init_f1u(nr_up_if_t *iface);
+void nr_up_init_cu(nr_up_if_t *iface);
 void nr_up_f1u_ddds_indication(ue_id_t ue_id, rb_id_t drb_id, uint32_t dbs);
 bool nr_up_f1u_ul_user_data_recv(protocol_ctxt_t *ctxt_pP,
                                  const srb_flag_t srb_flagP,

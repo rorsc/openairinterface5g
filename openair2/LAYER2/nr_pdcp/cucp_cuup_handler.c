@@ -28,7 +28,7 @@
 #include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/LAYER2/nr_up/nr_up.h"
 #include "openair2/SDAP/nr_sdap/nr_sdap.h"
-#include "openair2/LAYER2/nr_up/nr_up_f1u.h"
+#include "openair2/LAYER2/nr_up/nr_up_cu.h"
 #include "openair3/ocp-gtpu/gtp_itf.h"
 
 /** @brief GTP gtpCallback adapter: ignore is_poll, forward to nr_pdcp_data_req_drb */

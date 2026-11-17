@@ -19,8 +19,8 @@ target_link_libraries(nr_up_direct PUBLIC nr_up_pdcp_if PRIVATE log_headers asn1
 add_library(nr_up_ue OBJECT nr_up_direct.c)
 target_link_libraries(nr_up_ue PUBLIC nr_up_pdcp_if PRIVATE log_headers asn1_nr_rrc_hdrs)
 
-add_library(nr_up_f1 STATIC nr_up_f1u.c)
-target_link_libraries(nr_up_f1 PUBLIC nr_up_pdcp_if PRIVATE f1ap asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+add_library(nr_up_cu STATIC nr_up_cu.c)
+target_link_libraries(nr_up_cu PUBLIC nr_up_pdcp_if PRIVATE f1ap asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_library(nr_up_du STATIC nr_up_du.c)
 target_link_libraries(nr_up_du PRIVATE nr_up nr_rlc f1ap asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs ds log_headers)

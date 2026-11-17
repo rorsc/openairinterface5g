@@ -45,7 +45,7 @@
 #include "openair2/LAYER2/nr_rlc/nr_rlc_data_req_queue.h"
 #include "pdcp_messages_types.h"
 #ifdef PDCP_CUCP_CUUP
-#include "LAYER2/nr_up/nr_up_f1u.h"
+#include "LAYER2/nr_up/nr_up_cu.h"
 /* Weak so nr_pdcp_gnb can link without nr_up_direct (physims, nr-cuup) */
 void nr_up_init_direct(nr_up_if_t *iface) __attribute__((weak));
 #else
@@ -272,8 +272,8 @@ void nr_pdcp_layer_init(void)
 
 #ifdef PDCP_CUCP_CUUP
   if (NODE_IS_CU(node_type)) {
-    AssertFatal(nr_up_init_f1u != NULL, "F1-U nr-up not linked\n");
-    nr_up_init_f1u(get_nr_up_if());
+    AssertFatal(nr_up_init_cu != NULL, "F1-U nr-up not linked\n");
+    nr_up_init_cu(get_nr_up_if());
   } else if (NODE_IS_MONOLITHIC(node_type)) {
     AssertFatal(nr_up_init_direct != NULL, "mono nr-up backend not linked\n");
 #else

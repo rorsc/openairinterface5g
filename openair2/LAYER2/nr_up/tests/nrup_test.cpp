@@ -15,7 +15,7 @@
 extern "C" {
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/LAYER2/nr_up/nr_up_ddds.h"
-#include "openair2/LAYER2/nr_up/nr_up_f1u.h"
+#include "openair2/LAYER2/nr_up/nr_up_cu.h"
 #include "openair2/LAYER2/nr_up/nr_up_dl_user_data.h"
 
 softmodem_params_t *get_softmodem_params(void)
@@ -72,7 +72,7 @@ static void tick_ms(int n)
 
 static void setup_local_drb(ue_id_t ue_id, uint8_t drb_id)
 {
-  nr_up_init_f1u(get_nr_up_if());
+  nr_up_init_cu(get_nr_up_if());
   nr_up_add_drb(ue_id, drb_id);
 }
 
@@ -129,7 +129,7 @@ static f1_gtp_pair setup_f1_gtp(uint32_t ue_id, int bearer_id, uint16_t port, gt
 
   createF1inst(0, NULL, NULL);
   getCxt(0)->gtpInst = p.ep_tx;
-  nr_up_init_f1u(get_nr_up_if());
+  nr_up_init_cu(get_nr_up_if());
   return p;
 }
 

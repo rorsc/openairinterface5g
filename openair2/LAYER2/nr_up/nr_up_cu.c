@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
-#include "nr_up_f1u.h"
+#include "nr_up_cu.h"
 
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
@@ -62,7 +62,7 @@ bool nr_up_f1u_ul_user_data_recv(protocol_ctxt_t *ctxt_pP,
 }
 
 /** @brief Binds the F1-U nr-up backend on iface (CU side) */
-void nr_up_init_f1u(nr_up_if_t *iface)
+void nr_up_init_cu(nr_up_if_t *iface)
 {
   DevAssert(iface);
   nr_up_manager_init();

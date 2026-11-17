@@ -1112,7 +1112,7 @@ add_library(nr_pdcp_gnb STATIC
   )
 target_link_libraries(nr_pdcp_gnb PUBLIC nr_pdcp_core)
 target_compile_definitions(nr_pdcp_gnb PUBLIC PDCP_CUCP_CUUP)
-target_link_libraries(nr_pdcp_gnb PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs log_headers e1ap_lib nr_up_f1)
+target_link_libraries(nr_pdcp_gnb PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs log_headers e1ap_lib nr_up_cu)
 
 # UE PDCP
 add_library(nr_pdcp_ue STATIC openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.c)
@@ -1869,7 +1869,7 @@ add_executable(nr-cuup
 
 target_link_libraries(nr-cuup PRIVATE
                       CONFIG_LIB ITTI SCTP_CLIENT
-                      GTPV1U e1ap f1ap nr_pdcp_gnb nr_up_f1
+                      GTPV1U e1ap f1ap nr_pdcp_gnb nr_up_cu
                       time_management softmodem_common
                       alg
                       dl pthread ${T_LIB})
