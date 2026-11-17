@@ -51,9 +51,9 @@ void nr_up_init_direct(nr_up_if_t *iface) __attribute__((weak));
 #else
 #include "LAYER2/nr_up/nr_up_direct.h"
 #endif
-#include "LAYER2/nr_up/nr_up_flow_control.h"
+#include "LAYER2/nr_up/nr_up_dl_user_data.h"
 #include "common/utils/ds/byte_array.h"
-#include "LAYER2/nr_up/nr_up_pdcp_if.h"
+#include "LAYER2/nr_up/nr_up_dl_user_data.h"
 #include "utils.h"
 
 #define TODO do { \
@@ -877,7 +877,7 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
 
   const int max_size = nr_max_pdcp_pdu_size(sdu_buffer_size);
   const uint32_t pdcp_sn = rb->stats.txpdu_sn;
-  nr_up_user_data_req_t req = {
+  nr_up_dl_user_data_req_t req = {
       .ue_id = ue_id,
       .drb_id = rb_id,
       .sdu_id = muiP,
@@ -902,7 +902,7 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
 
   req.pdu.buf = (uint8_t *)pdu_buf;
   req.pdu.len = pdu_size;
-  nr_up_deliver_pdu_drb(&req);
+  nr_up_dl_user_data(&req);
   return 1;
 }
 

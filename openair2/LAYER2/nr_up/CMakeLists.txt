@@ -7,7 +7,7 @@ target_link_libraries(nr_up PRIVATE ds log_headers)
 add_library(nr_up_ddds_policy INTERFACE)
 target_link_libraries(nr_up_ddds_policy INTERFACE nr_up)
 
-add_library(nr_up_pdcp_if STATIC nr_up_pdcp_if.c nr_up_flow_control.c)
+add_library(nr_up_pdcp_if STATIC nr_up_dl_user_data.c)
 target_link_libraries(nr_up_pdcp_if PUBLIC nr_up PRIVATE ds log_headers)
 
 # gNB mono: same PDCP_CUCP_CUUP compile flag as nr_pdcp_gnb

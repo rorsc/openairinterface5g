@@ -2,8 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-CSSL-1.0
  */
 
-#include "nr_up_flow_control.h"
-#include "nr_up_pdcp_if.h"
+#include "nr_up_dl_user_data.h"
 
 #include "assertions.h"
 #include "common/utils/LOG/log.h"
@@ -35,7 +34,7 @@ static void nr_up_flow_control_log_drop(void)
 
 /** @brief Flow control precheck on pdu_max_size against available per-DRB TX budget.
  * On DROP, offer a poll-only empty user_data so a stale DBS can refresh. */
-nr_up_flow_control_action_t nr_up_flow_control_precheck(const nr_up_user_data_req_t *req)
+nr_up_flow_control_action_t nr_up_flow_control_precheck(const nr_up_dl_user_data_req_t *req)
 {
   DevAssert(req);
   nr_up_dbs_t dbs = nr_up_manager_get_dbs(req->ue_id, req->drb_id);
@@ -56,15 +55,26 @@ nr_up_flow_control_action_t nr_up_flow_control_precheck(const nr_up_user_data_re
   /* DROP: RLC reported DBS 0, PDU does not fit, or soft-dropped */
   nr_up_flow_control_log_drop();
 
-  nr_up_user_data_req_t poll = *req;
-  nr_up_user_data(&poll);
+  // poll every time??
+  nr_up_dl_user_data_req_t poll = *req;
+  nr_up_dl_user_data(&poll);
   return NR_UP_FLOW_DROP;
 }
 
 /** @brief Hands a PDCP DRB PDU to nr-up for DL delivery. */
-void nr_up_deliver_pdu_drb(nr_up_user_data_req_t *req)
+void nr_up_dl_user_data(const nr_up_dl_user_data_req_t *req)
 {
   DevAssert(req);
-  DevAssert(req->pdu.buf != NULL && req->pdu.len > 0);
-  nr_up_user_data(req);
+
+  nr_up_dl_user_data_req_t local = *req;
+  local.report_polling = nr_up_report_polling(local.ue_id, local.drb_id);
+  if ((local.pdu.buf == NULL || local.pdu.len == 0) && !local.report_polling)
+    return;
+
+  nr_up_if_t *iface = get_nr_up_if();
+  DevAssert(iface);
+  DevAssert(iface->up_dl_user_data);
+  iface->up_dl_user_data(&local);
+  if (local.pdu.buf != NULL && local.pdu.len > 0)
+    nr_up_consume_dbs(local.ue_id, local.drb_id, local.pdu.len);
 }

@@ -13,7 +13,7 @@
 #include "nr_up.h"
 
 /** @brief Send a DL DRB PDU on F1-U via GTP-U with NR-U sequence number */
-static void nr_up_f1u_dl_user_data(const nr_up_user_data_req_t *req)
+static void nr_up_f1u_dl_user_data(const nr_up_dl_user_data_req_t *req)
 {
   const f1ap_cudu_inst_t *inst = getCxt(0);
   DevAssert(req);
@@ -66,6 +66,6 @@ void nr_up_init_f1u(nr_up_if_t *iface)
 {
   DevAssert(iface);
   nr_up_manager_init();
-  iface->up_user_data = nr_up_f1u_dl_user_data;
+  iface->up_dl_user_data = nr_up_f1u_dl_user_data;
   iface->up_ddds_indication = nr_up_sync_dbs;
 }

@@ -78,10 +78,10 @@ PDCP calls nr-up only. The backend is chosen at `nr_up_init_*`:
 
 | Role | PDCP deliver | nr-up init | Backend |
 |------|--------------|------------|---------|
-| gNB mono | `nr_up_deliver_pdu_drb` | `nr_up_init_direct` | DL to local RLC; UL via `nr_up_direct_ul_user_data` |
-| gNB F1 / CU | `nr_up_deliver_pdu_drb` | `nr_up_init_f1u` | DL over F1-U GTP; DDDS RX via `nr_up_f1u_ddds_indication` |
+| gNB mono | `nr_up_dl_user_data` | `nr_up_init_direct` | DL to local RLC; UL via `nr_up_direct_ul_user_data` |
+| gNB F1 / CU | `nr_up_dl_user_data` | `nr_up_init_f1u` | DL over F1-U GTP; DDDS RX via `nr_up_f1u_ddds_indication` |
 | gNB F1 / DU | (no PDCP) | `nr_up_init_du` | `ul_user_data` = `nr_up_f1u_ul_user_data`; `up_send_ddds` = `nr_up_f1u_ddds` |
-| UE | `nr_up_deliver_pdu_drb` | `nr_up_init_direct` | same as mono (local RLC) |
+| UE | `nr_up_dl_user_data` | `nr_up_init_direct` | same as mono (local RLC) |
 
 Per-DRB budget entries:
 
@@ -98,7 +98,7 @@ For each DL SDU, PDCP asks nr-up before assigning a PDCP SN.
 2. `nr_up_flow_control_precheck`: one `nr_up_report_polling` check ->
    ALLOW, ALLOW_RP, or DROP
 3. On ALLOW / ALLOW_RP: `process_sdu`, set `req.report_polling` from
-   ALLOW_RP, then `nr_up_deliver_pdu_drb` -> `nr_up_user_data`
+   ALLOW_RP, then `nr_up_dl_user_data` -> `nr_up_user_data`
 4. Backend: mono/UE `nr_up_direct_dl_user_data`, F1/CU `nr_up_f1u_dl_user_data`
 
 Budget cache (`nr_up_dbs_t` per DRB):
@@ -155,7 +155,7 @@ sequenceDiagram
     CUNR->>PDCP: ALLOW or ALLOW_RP
     PDCP->>PDCP: process_sdu() (assign PDCP SN)
     Note over PDCP: req.report_polling = (action == ALLOW_RP)
-    PDCP->>CUNR: nr_up_deliver_pdu_drb(req)
+    PDCP->>CUNR: nr_up_dl_user_data(req)
     PDCP->>CUNR: nr_up_user_data(req)
     CUNR->>CUNR: iface->up_user_data()
     alt mono/UE

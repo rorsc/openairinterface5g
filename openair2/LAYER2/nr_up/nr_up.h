@@ -23,7 +23,7 @@ typedef struct nr_up_dl_user_data_req_s {
   size_t pdu_max_size;
   byte_array_t pdu;
   bool report_polling;
-} nr_up_user_data_req_t;
+} nr_up_dl_user_data_req_t;
 
 typedef enum nr_up_flow_control_action_e {
   NR_UP_FLOW_ALLOW,
@@ -39,14 +39,14 @@ typedef struct nr_up_ddds_req_s {
   byte_array_t pdu;
 } nr_up_ddds_req_t;
 
-typedef void (*nr_up_user_data_fn_t)(const nr_up_user_data_req_t *req);
+typedef void (*nr_up_dl_user_data_fn_t)(const nr_up_dl_user_data_req_t *req);
 typedef void (*nr_up_ddds_fn_t)(ue_id_t ue_id, rb_id_t drb_id, uint32_t dbs);
 typedef void (*nr_up_send_ddds_fn_t)(const nr_up_ddds_req_t *req);
 /** RLC UL DRB leave: F1-U or mono/UE direct */
 typedef void (*nr_up_ul_user_data_fn_t)(protocol_ctxt_t *ctxt, ue_id_t rlc_ue_id, rb_id_t drb_id, uint8_t *buf, size_t len, int tx_space);
 
 typedef struct nr_up_if_s {
-  nr_up_user_data_fn_t up_user_data;
+  nr_up_dl_user_data_fn_t up_dl_user_data;
   /** CU: apply remote Desired Buffer Size into the local budget */
   nr_up_ddds_fn_t up_ddds_indication;
   /** DU: request DDDS TX toward the CU */

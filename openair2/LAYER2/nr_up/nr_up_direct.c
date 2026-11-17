@@ -10,7 +10,7 @@
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "nr_up.h"
 #include "nr_up_ddds_policy.h"
-#include "nr_up_pdcp_if.h"
+#include "nr_up_dl_user_data.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/utils.h"
 #ifdef PDCP_CUCP_CUUP
@@ -19,7 +19,7 @@
 
 /** @brief Enqueue a DRB PDU toward local RLC (mono gNB or UE).
  * NULL PDU with report_polling: enqueue a DBS refresh only. */
-static void nr_up_direct_dl_user_data(const nr_up_user_data_req_t *req)
+static void nr_up_direct_dl_user_data(const nr_up_dl_user_data_req_t *req)
 {
   DevAssert(req);
 #ifdef PDCP_CUCP_CUUP
@@ -97,7 +97,7 @@ void nr_up_init_direct(nr_up_if_t *iface)
 {
   DevAssert(iface);
   nr_up_manager_init();
-  iface->up_user_data = nr_up_direct_dl_user_data;
+  iface->up_dl_user_data = nr_up_direct_dl_user_data;
   iface->up_ddds_indication = nr_up_sync_dbs;
   iface->up_send_ddds = nr_up_direct_ddds;
   iface->ul_user_data = nr_up_direct_ul_user_data;

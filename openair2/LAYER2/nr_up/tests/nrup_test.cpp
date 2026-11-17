@@ -16,7 +16,7 @@ extern "C" {
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/LAYER2/nr_up/nr_up_ddds_policy.h"
 #include "openair2/LAYER2/nr_up/nr_up_f1u.h"
-#include "openair2/LAYER2/nr_up/nr_up_flow_control.h"
+#include "openair2/LAYER2/nr_up/nr_up_dl_user_data.h"
 
 softmodem_params_t *get_softmodem_params(void)
 {
@@ -200,7 +200,7 @@ TEST(nrup, flow_control_allow_never_synced)
   const uint8_t drb_id = 1;
   setup_local_drb(ue_id, drb_id);
 
-  nr_up_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
+  nr_up_dl_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
   EXPECT_EQ(nr_up_flow_control_precheck(&req), NR_UP_FLOW_ALLOW);
 
   nr_up_release_drb(ue_id, drb_id);
@@ -218,7 +218,7 @@ TEST(nrup, flow_control_drop_poll)
   nr_up_sync_dbs(ue_id, drb_id, 0);
   tick_ms(20);
 
-  nr_up_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
+  nr_up_dl_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
   EXPECT_EQ(nr_up_flow_control_precheck(&req), NR_UP_FLOW_DROP);
   usleep(100 * 1000);
   EXPECT_EQ(g_rx.count, 1);
@@ -238,7 +238,7 @@ TEST(nrup, flow_control_allow_synced)
     setup_local_drb(ue_id, drb_id);
     nr_up_sync_dbs(ue_id, drb_id, dbs_values[i]);
 
-    nr_up_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
+    nr_up_dl_user_data_req_t req = {.ue_id = ue_id, .drb_id = drb_id, .pdu_max_size = 100};
     EXPECT_EQ(nr_up_flow_control_precheck(&req), NR_UP_FLOW_ALLOW) << "dbs=" << dbs_values[i];
 
     nr_up_release_drb(ue_id, drb_id);
@@ -280,14 +280,14 @@ TEST(nrup, f1_dl_deliver)
   nr_up_sync_dbs(ue_id, drb_id, 65535);
   tick_ms(20);
 
-  nr_up_user_data_req_t req = {
+  nr_up_dl_user_data_req_t req = {
       .ue_id = ue_id,
       .drb_id = drb_id,
       .pdcp_sn = 7,
       .pdu_max_size = sizeof(pdu),
       .pdu = {.len = sizeof(pdu), .buf = pdu},
   };
-  nr_up_deliver_pdu_drb(&req);
+  nr_up_dl_user_data(&req);
 
   usleep(100 * 1000);
   EXPECT_EQ(g_rx.count, 1);
@@ -310,13 +310,13 @@ TEST(nrup, f1_ddds_on_report_polling)
   nr_up_sync_dbs(ue_id, drb_id, 65535);
   tick_ms(20);
 
-  nr_up_user_data_req_t req = {
+  nr_up_dl_user_data_req_t req = {
       .ue_id = ue_id,
       .drb_id = drb_id,
       .pdu_max_size = sizeof(pdu),
       .pdu = {.len = sizeof(pdu), .buf = pdu},
   };
-  nr_up_deliver_pdu_drb(&req);
+  nr_up_dl_user_data(&req);
 
   usleep(100 * 1000);
   EXPECT_EQ(g_rx.count, 1);
